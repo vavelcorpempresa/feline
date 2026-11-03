@@ -9,6 +9,7 @@ import { FelineLiveSandboxStore } from '../services/feline-live-sandbox.service'
 import { generarApiKey, SCOPES, Scope } from '../api/v1/documentos.routes';
 import { CodigoTipoDTE } from '../types/sii-dte.types';
 import { normalizeAndValidateRut } from '../utils/sii-normative.utils';
+import { urlPublica } from '../config';
 
 // ============================================================================
 // ADMINISTRACIÓN DE FELINE POR CONSOLA (no se expone por HTTP)
@@ -305,7 +306,7 @@ async function main() {
         });
         console.log(`Proyecto conectado (id ${r.id}, permisos: ${r.permisos.join(', ')}).`);
         console.log('Variables para el .env del proyecto (la clave no se vuelve a mostrar):\n');
-        console.log(`FELINE_API_URL=${process.env.FELINE_PUBLIC_URL || 'http://localhost:3004'}`);
+        console.log(`FELINE_API_URL=${urlPublica()}`);
         console.log(`FELINE_API_KEY=${r.clave}`);
         if (r.webhookSecret) console.log(`FELINE_WEBHOOK_SECRET=${r.webhookSecret}`);
         break;
@@ -339,7 +340,7 @@ async function main() {
         });
         console.log(`Empresa de prueba ${r.rut} lista (certificado autofirmado y CAF locales).`);
         console.log('Variables para el .env de FUGAR (la clave no se vuelve a mostrar):\n');
-        console.log(`MOTOR_DTE_API_URL=${process.env.FELINE_PUBLIC_URL || 'http://localhost:3004'}/v1`);
+        console.log(`MOTOR_DTE_API_URL=${urlPublica()}/v1`);
         console.log(`MOTOR_DTE_API_KEY=${r.clave}`);
         if (r.webhookSecret) console.log(`MOTOR_DTE_WEBHOOK_SECRET=${r.webhookSecret}`);
         console.log(`EMISOR_RUT=${r.rut}`);

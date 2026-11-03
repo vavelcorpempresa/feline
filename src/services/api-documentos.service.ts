@@ -5,6 +5,7 @@ import { CodigoTipoDTE, DetalleItemSII, ReferenciaSII } from '../types/sii-dte.t
 import { DteBillingOrchestratorService } from './dte-orchestrator.service';
 import { DteXmlBuilderService } from './dte-xml-builder.service';
 import { formatSiiTimestamp, normalizeAndValidateRut } from '../utils/sii-normative.utils';
+import { urlPublica } from '../config';
 
 // ============================================================================
 // API DE DOCUMENTOS (v1) PARA INTEGRACIONES EXTERNAS (ej. FUGAR Marketplace)
@@ -112,7 +113,7 @@ export class ApiDocumentosService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly orchestrator: DteBillingOrchestratorService,
-    private readonly publicBaseUrl: string = process.env.FELINE_PUBLIC_URL || 'http://localhost:3004'
+    private readonly publicBaseUrl: string = urlPublica()
   ) {}
 
   /** Convierte los ítems del contrato API al nodo <Detalle> del SII. */

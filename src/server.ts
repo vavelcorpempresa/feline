@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { z } from 'zod';
 import crypto from 'node:crypto';
 import { prismaBase } from './core/tenant-context';
+import { VERSION, puerto, urlPublica } from './config';
 import { CryptoVaultService } from './core/crypto-vault';
 import { CafTedService } from './services/caf-ted.service';
 import { XmlDsigSignerService } from './services/xmldsig-signer.service';
@@ -107,7 +108,7 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     prisma: prismaBase,
     documentos: apiDocumentos,
     webhooks,
-    publicBaseUrl: process.env.FELINE_PUBLIC_URL || 'http://localhost:3004',
+    publicBaseUrl: urlPublica(),
   });
 
   // --------------------------------------------------------------------------
@@ -123,8 +124,8 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
         brand: currentBrand,
         description:
           'Sistema de Facturación Electrónica Multiempresa (Odoo account.move + l10n_cl + DTE SII Chile)',
-        version: '1.2.0',
-        port: Number(process.env.PORT || (currentBrand === 'rocas' ? 3006 : 3007)),
+        version: VERSION,
+        port: puerto(),
         status: 'online',
         dashboardUrl: request.protocol + '://' + request.hostname + '/',
         modules: [
@@ -152,8 +153,8 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
 
   app.get('/api/v1/status', async () => ({
     system: 'Feline',
-    version: '1.2.0',
-    port: Number(process.env.PORT || 3004),
+    version: VERSION,
+    port: puerto(),
     status: 'online',
   }));
 
@@ -616,7 +617,7 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
 
 if (require.main === module) {
   const server = buildFastifyApp();
-  const port = Number(process.env.PORT || 3004);
+  const port = puerto();
   if (process.env.FELINE_DISPATCHER !== 'off') {
     server.dteDispatcher.start();
     server.log.info(`Despachador SII activo (modo ${process.env.FELINE_SII_MODO === 'simulado' ? 'SIMULADO' : 'real'})`);

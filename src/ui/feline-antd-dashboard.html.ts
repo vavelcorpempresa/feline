@@ -9,6 +9,7 @@
 
 import { FELINE_LOGO_DATA_URI, FELINE_ISOTIPO_DATA_URI } from './feline-logo';
 import { RDS_LOGO_DATA_URI } from './rds-logo';
+import { VERSION } from '../config';
 
 export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'feline'): string {
   const isRocas = brand === 'rocas';
@@ -27,12 +28,12 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Antonio:wght@600&display=swap" rel="stylesheet">
   <!-- React 18, Day.js, Ant Design 5 & Ant Design Icons -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/dayjs@1.11.10/dayjs.min.js"></script>
   <script src="https://unpkg.com/antd@5.21.4/dist/antd.min.js"></script>
   <script src="https://unpkg.com/@ant-design/icons@5.4.0/dist/index.umd.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@8.1.1/babel.min.js"></script>
   <!-- Timbre electrónico PDF417 en la representación del documento -->
   <script src="https://unpkg.com/bwip-js@4.11.4/dist/bwip-js-min.js"></script>
   <style>
@@ -4042,7 +4043,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
 
               {activeTab !== 'ventas-facturas-boletas' && (
                 <Footer style={{ textAlign: 'center', background: 'transparent', opacity: 0.75, fontSize: 12 }}>
-                  <strong>Feline ERP v1.3.0</strong> — SII Chile DTE + Contabilidad Odoo 18 (Partida Doble & Balance 8 Columnas) + RCV/F29 + Design Sparx Antd Multipurpose Dashboard (Puerto 3004)
+                  <strong>Feline v${VERSION}</strong> — Facturación electrónica, contabilidad y libros de compra y venta
                 </Footer>
               )}
             </Layout>
