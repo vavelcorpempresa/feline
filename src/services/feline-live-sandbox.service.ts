@@ -886,6 +886,12 @@ export class FelineLiveSandboxStore {
   ): UserDemoRecord {
     const user = this.users.find((u) => u.id === id);
     if (!user) throw new Error('Usuario no encontrado.');
+    if (params.email) {
+      const correo = params.email.trim().toLowerCase();
+      if (this.users.some((u) => u.id !== id && u.email.toLowerCase() === correo)) {
+        throw new Error(`Ya existe otro usuario con el correo ${correo}.`);
+      }
+    }
 
     if (params.name) user.name = params.name.trim();
     if (params.email) user.email = params.email.trim().toLowerCase();
@@ -894,6 +900,37 @@ export class FelineLiveSandboxStore {
     if (typeof params.isActive === 'boolean') user.isActive = params.isActive;
 
     return user;
+  }
+
+  /**
+   * Valida un rango de folios de demostración: enteros, desde ≤ hasta, y sin reutilizar
+   * folios que la empresa ya asignó para ese tipo de documento.
+   */
+  public validarRangoCaf(tenantId: string, tipoDte: number, desde: number, hasta: number) {
+    if (!Number.isInteger(tipoDte) || !(tipoDte in { 33: 1, 34: 1, 39: 1, 41: 1, 46: 1, 52: 1, 56: 1, 61: 1 })) {
+      throw new Error('Tipo de documento no válido para un rango de folios.');
+    }
+    if (!Number.isInteger(desde) || !Number.isInteger(hasta) || desde < 1 || hasta < desde) {
+      throw new Error('El rango de folios debe ser de números enteros, con "desde" ≥ 1 y "hasta" ≥ "desde".');
+    }
+    if (hasta - desde > 100000) throw new Error('Un rango de folios no puede superar 100.000 folios.');
+    const usado = Math.max(
+      0,
+      ...this.cafs.filter((c) => c.tenantId === tenantId && c.tipoDte === tipoDte).map((c) => c.folioActual),
+      ...this.moves
+        .filter(
+          (m) =>
+            m.tenantId === tenantId &&
+            m.documentTypeCode === tipoDte &&
+            m.l10nLatamDocumentNumber &&
+            // Solo folios propios: los de compras son números del proveedor
+            (m.moveType === 'OUT_INVOICE' || m.moveType === 'OUT_REFUND')
+        )
+        .map((m) => Number(m.l10nLatamDocumentNumber))
+    );
+    if (desde <= usado) {
+      throw new Error(`El folio ${usado} ya fue usado para este tipo de documento: el nuevo rango debe empezar en ${usado + 1} o más.`);
+    }
   }
 
   /**
@@ -1237,7 +1274,9 @@ export class FelineLiveSandboxStore {
       );
     }
 
-    const computed = OdooAccountMoveService.computeMoveLinesAndTotals(input.lines, selectedCode);
+    const computed = OdooAccountMoveService.computeMoveLinesAndTotals(input.lines, selectedCode, {
+      permitirTotalCero: OdooAccountMoveService.esCorreccionDeTexto(selectedCode, input.references),
+    });
     const docMeta = ODOO_L10N_CL_DOCUMENT_TYPES.find((d) => d.code === selectedCode);
 
     const record: MoveDemoRecord = {
@@ -1421,6 +1460,12 @@ export class FelineLiveSandboxStore {
     if (!origin || origin.state !== 'POSTED' || !origin.l10nLatamDocumentNumber) {
       throw new Error('Solo se pueden anular o corregir documentos publicados con Folio SII.');
     }
+    if (origin.moveType !== 'OUT_INVOICE') {
+      throw new Error('Solo se emiten notas de crédito sobre facturas o boletas de venta.');
+    }
+    if (origin.paymentState === 'REVERSED') {
+      throw new Error('Este documento ya fue anulado con una nota de crédito.');
+    }
 
     const creditLines: OdooMoveLineInput[] =
       params.referenceDocCode === 2
@@ -1494,7 +1539,14 @@ export class FelineLiveSandboxStore {
     if (!move || move.state !== 'POSTED') {
       throw new Error('Solo se pueden registrar pagos sobre facturas publicadas.');
     }
-    const applied = Math.min(move.amountResidual, Math.round(params.amount));
+    const monto = Number(params.amount);
+    if (!Number.isFinite(monto) || monto <= 0) {
+      throw new Error('El monto del pago debe ser un número mayor a 0.');
+    }
+    if (move.paymentState === 'REVERSED' || move.moveType === 'OUT_REFUND') {
+      throw new Error('No se registran pagos sobre documentos anulados ni sobre notas de crédito.');
+    }
+    const applied = Math.min(move.amountResidual, Math.round(monto));
     if (applied <= 0) {
       throw new Error('El documento ya se encuentra completamente pagado o conciliado.');
     }

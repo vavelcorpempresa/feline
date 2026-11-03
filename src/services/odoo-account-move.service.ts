@@ -264,13 +264,37 @@ export class OdooAccountMoveService {
    * Calcula los subtotales por línea (`account.move.line`) y los totales del asiento (`account.move`)
    * aplicando redondeo al entero peso chileno (`CLP`, 0 decimales) como lo hace `float_round` en Odoo `l10n_cl`.
    */
+  /**
+   * Valida cada línea antes de calcular: cantidad > 0, precio ≥ 0, descuento entre 0 y 100 %
+   * y nombre obligatorio. Convierte a número los valores que llegan como texto desde formularios.
+   */
+  public static normalizarLineas(lines: OdooMoveLineInput[]): OdooMoveLineInput[] {
+    return lines.map((line, idx) => {
+      const n = idx + 1;
+      const quantity = Number(line.quantity);
+      const priceUnit = Number(line.priceUnit);
+      const discountPct = line.discountPct === undefined || line.discountPct === null ? 0 : Number(line.discountPct);
+      const discountFixed = line.discountFixed === undefined || line.discountFixed === null ? 0 : Number(line.discountFixed);
+      if (!String(line.name ?? '').trim()) throw new Error(`La línea ${n} no tiene descripción.`);
+      if (!Number.isFinite(quantity) || quantity <= 0) throw new Error(`La línea ${n} debe tener una cantidad mayor a 0.`);
+      if (!Number.isFinite(priceUnit) || priceUnit < 0) throw new Error(`La línea ${n} tiene un precio inválido.`);
+      if (!Number.isFinite(discountPct) || discountPct < 0 || discountPct > 100) {
+        throw new Error(`El descuento de la línea ${n} debe estar entre 0 y 100 %.`);
+      }
+      if (!Number.isFinite(discountFixed) || discountFixed < 0) throw new Error(`La línea ${n} tiene un descuento inválido.`);
+      return { ...line, quantity, priceUnit, discountPct, discountFixed };
+    });
+  }
+
   public static computeMoveLinesAndTotals(
-    lines: OdooMoveLineInput[],
-    documentTypeCode: CodigoTipoDTE
+    rawLines: OdooMoveLineInput[],
+    documentTypeCode: CodigoTipoDTE,
+    opciones: { permitirTotalCero?: boolean } = {}
   ): ComputedMoveTotals {
-    if (!lines || lines.length === 0) {
+    if (!rawLines || rawLines.length === 0) {
       throw new Error('You need to add a line before posting. (El asiento debe tener al menos una línea).');
     }
+    const lines = OdooAccountMoveService.normalizarLineas(rawLines);
 
     const forceExemptDoc =
       documentTypeCode === CodigoTipoDTE.FacturaNoAfectaOExenta ||
@@ -310,6 +334,10 @@ export class OdooAccountMoveService {
     // En Chile (SII), el IVA total del documento se calcula sobre la suma del Monto Neto Afecto (19%)
     const amountTax = amountUntaxed > 0 ? Math.round(amountUntaxed * 0.19) : 0;
     const amountTotal = amountUntaxed + amountExempt + amountTax;
+    // Solo una nota de crédito que corrige texto (CodRef 2) puede ir por $0
+    if (amountTotal <= 0 && !opciones.permitirTotalCero) {
+      throw new Error('El total del documento debe ser mayor a $0.');
+    }
 
     return {
       lines: computedLines,
@@ -370,6 +398,15 @@ export class OdooAccountMoveService {
         MontoItem: isBoleta ? line.priceTotal : line.priceSubtotal,
       };
     });
+  }
+
+  /** Nota de crédito que solo corrige texto (CodRef 2): la única que puede ir por $0. */
+  public static esCorreccionDeTexto(
+    documentTypeCode: number,
+    references?: Array<{ referenceDocCode?: number | null }>
+  ): boolean {
+    return documentTypeCode === CodigoTipoDTE.NotaCreditoElectronica &&
+      (references ?? []).some((r) => r.referenceDocCode === 2);
   }
 
   /**
@@ -500,10 +537,9 @@ export class OdooAccountMoveService {
       );
     }
 
-    const computed = OdooAccountMoveService.computeMoveLinesAndTotals(
-      input.lines,
-      selectedDocCode
-    );
+    const computed = OdooAccountMoveService.computeMoveLinesAndTotals(input.lines, selectedDocCode, {
+      permitirTotalCero: OdooAccountMoveService.esCorreccionDeTexto(selectedDocCode, input.references),
+    });
 
     return this.prisma.accountMove.create({
       data: {
@@ -701,6 +737,12 @@ export class OdooAccountMoveService {
         '[Odoo AccountMoveReversal] Solo se puede revertir una factura que esté en estado POSTED y posea un Folio SII asignado.'
       );
     }
+    if (originMove.moveType !== 'OUT_INVOICE') {
+      throw new Error('Solo se emiten notas de crédito sobre facturas o boletas de venta.');
+    }
+    if (originMove.paymentState === 'REVERSED') {
+      throw new Error('Este documento ya fue anulado con una nota de crédito.');
+    }
 
     // Construir las líneas de la Nota de Crédito según el Código de Referencia SII
     const creditNoteLines: OdooMoveLineInput[] =
@@ -796,8 +838,8 @@ export class OdooAccountMoveService {
   }) {
     const { tenantId, moveId, journalId, amount, paymentDate, reference } = params;
 
-    if (amount <= 0) {
-      throw new Error('[Odoo AccountPayment] El monto del pago debe ser estrictamente mayor a 0.');
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('[Odoo AccountPayment] El monto del pago debe ser un número mayor a 0.');
     }
 
     return this.prisma.$transaction(async (tx) => {

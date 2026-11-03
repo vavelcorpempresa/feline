@@ -415,7 +415,9 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
       const tenantId = String(request.headers['x-tenant-id'] || 'tenant-feline-tech-01');
       const tenant = felineSandboxStore.tenants.find((t) => t.id === tenantId);
       if (!tenant) throw new Error('Tenant no encontrado');
-      const body = request.body as { tipoDte: CodigoTipoDTE; desde: number; hasta: number };
+      const raw = request.body as { tipoDte: unknown; desde: unknown; hasta: unknown };
+      const body = { tipoDte: Number(raw.tipoDte) as CodigoTipoDTE, desde: Number(raw.desde), hasta: Number(raw.hasta) };
+      felineSandboxStore.validarRangoCaf(tenantId, body.tipoDte, body.desde, body.hasta);
       const { xmlAutorizacion, publicKeyPem } = FelineLiveSandboxStore.generateCafXml({
         rutEmisor: tenant.rut,
         razonSocial: tenant.razonSocial,
