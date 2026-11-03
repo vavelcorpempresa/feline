@@ -25,12 +25,21 @@ Realizada con la skill *ai-construction-framework* (flujo "proyecto existente").
 - Suite completa: 64 de 64 pruebas, con PostgreSQL de pruebas (`TEST_DATABASE_URL`), `npm run typecheck` y `npm run build` sin errores.
 - Panel verificado en el navegador (puerto 3007): carga, muestra documentos y no tiene errores de consola salvo `favicon.ico` (preexistente).
 
-## Pendientes (requieren decisión o una fase completa)
+## Mejoras posteriores (3 de noviembre)
 
-- **Login real con roles** para el panel (fase 0). Mientras tanto, el panel de demostración no debe exponerse en internet.
-- **Dos mundos separados**: el panel usa datos en memoria y la API usa PostgreSQL (fase 2).
-- **Panel monolítico**: un archivo de ~5.300 líneas compilado en el navegador; conviene un paso de compilación.
-- **Folio perdido** si la firma falla después de asignarlo (requiere anulación de folios ante el SII).
+| Mejora | Commit |
+|---|---|
+| **Inicio de sesión con roles**: contraseñas con scrypt, sesión firmada en cookie HttpOnly, bloqueo tras 5 intentos, acceso por empresa y permisos por rol en todas las rutas del panel. Además, crear empresa y generar folios ya no devuelven llaves privadas. | `d0a69a5` |
+| **Folios sin uso**: los errores de datos se detectan antes de asignar folio; si la emisión falla después, el folio se registra para anularlo ante el SII (`/v1/empresa` → `foliosPorAnular`, `npm run admin -- folios:sin-uso`). | `1ba97f0` |
+| **Panel compilado en el servidor**: el navegador ya no descarga Babel (~2,4 MB) ni compila el panel en cada carga. | `299af00` |
+
+Variables nuevas: `FELINE_SESSION_SECRET` (obligatoria en producción) y `FELINE_PANEL_CLAVE_DEMO`. Esquema nuevo: tabla `folios_sin_uso` (`npm run db:push`).
+
+## Pendientes
+
+- **Dos mundos separados**: el panel usa datos en memoria (usuarios incluidos: se reinician con el servidor) y la API usa PostgreSQL. Unificarlos es la fase 2 del ROADMAP.
+- **Panel monolítico**: ya no se compila en el navegador, pero sigue siendo un archivo de ~5.300 líneas; dividirlo en módulos es una mejora de mantenimiento.
+- **Cierre de sesión**: la sesión es firmada y sin estado; al cerrar sesión se borra la cookie, pero un token copiado sigue válido hasta su vencimiento (12 h).
 
 ## Riesgos de las reparaciones
 
