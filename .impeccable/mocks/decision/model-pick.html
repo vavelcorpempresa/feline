@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;font:14px/1.45 "Public Sans",system-ui,sans-serif;color:#14213D;background:#E9ECF2;display:grid;grid-template-columns:240px 1fr}
+.num{font-variant-numeric:tabular-nums}
+nav{background:#14213D;color:#C5CDE0;padding:24px 14px}
+.brand{color:#fff;font-weight:700;font-size:19px;padding:0 10px}
+.co{font-size:12px;color:#A7B2CC;padding:4px 10px 20px}
+.sec{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#A7B2CC;padding:16px 10px 6px}
+nav a{display:block;padding:8px 10px;border-radius:4px}
+nav a.on{background:#fff;color:#14213D;font-weight:600;box-shadow:inset 3px 0 0 #C8102E}
+main{padding:26px 30px;min-width:0}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+h1{font-size:24px;font-weight:700}
+.btn{border:0;border-radius:4px;padding:10px 16px;font:600 14px "Public Sans";background:#C8102E;color:#fff}
+.ghost{background:#fff;color:#14213D;border:1px solid #C3CAD8}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.card{background:#fff;border:1px solid #D3D8E3;padding:14px 16px}
+.card .k{font-size:12px;color:#55607A}.card .v{font-size:22px;font-weight:700}
+.alert{color:#C8102E}
+.filters{display:flex;gap:6px;margin-bottom:10px}
+.tab{padding:6px 12px;border:1px solid #C3CAD8;background:#fff;font-size:13px}
+.tab.on{background:#14213D;color:#fff;border-color:#14213D}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #D3D8E3}
+th{text-align:left;font-size:12px;color:#55607A;font-weight:600;padding:10px 14px;border-bottom:2px solid #14213D}
+td{padding:10px 14px;border-bottom:1px solid #E3E7EF;vertical-align:middle}
+.folio{display:inline-block;border:2px solid #C8102E;color:#C8102E;text-align:center;font-size:12px;line-height:1.25;padding:4px 8px;font-weight:700;min-width:140px}
+.folio span{display:block;font-size:12px}
+.r{text-align:right}.sub{font-size:12px;color:#55607A}
+.pill{font-size:12px;font-weight:600;padding:3px 8px;border-radius:3px}
+.ok{background:#E3F2E8;color:#1F6B3A}.go{background:#E2E9F7;color:#3A5BA0}.no{background:#FBE3E6;color:#A30D25}.dr{background:#EEF0F4;color:#55607A}
+</style></head><body>
+<nav>
+<div class="brand">Feline Capital</div><div class="co">76.123.456-0</div>
+<a>Resumen</a><a class="on">Facturas y boletas</a><a>Libro de compras y ventas</a>
+<div class="sec">Contabilidad</div><a>Balance y F29</a><a>Gastos</a>
+<div class="sec">Empresa</div><a>Folios CAF</a><a>Envíos al SII</a><a>Certificado y proyectos</a>
+</nav>
+<main>
+<div class="top"><h1>Facturas y boletas</h1><button class="btn ghost" style="margin-left:auto">Registrar pago</button><button class="btn">Emitir documento</button></div>
+<div class="cards num">
+<div class="card"><div class="k">Emitidos en octubre</div><div class="v">47</div></div>
+<div class="card"><div class="k">Aceptados por el SII</div><div class="v">44</div></div>
+<div class="card"><div class="k">Requieren atención</div><div class="v alert">2</div></div>
+<div class="card"><div class="k">Por cobrar</div><div class="v">$3.808.020</div></div>
+</div>
+<div class="filters"><span class="tab on">Todos</span><span class="tab">Facturas</span><span class="tab">Boletas</span><span class="tab">Notas de crédito</span></div>
+<table class="num">
+<tr><th>Documento</th><th>Cliente</th><th>Fecha</th><th>Estado SII</th><th>Cobro</th><th class="r">Total</th></tr>
+<tr><td><span class="folio">R.U.T. 76.123.456-0<span>FACTURA N° 4</span></span></td><td>Distribuidora Sur Austral S.A.<div class="sub">96.512.340-2</div></td><td>18 oct</td><td><span class="pill no">Rechazado</span><div class="sub">RUT receptor no autorizado</div></td><td>—</td><td class="r">$845.920</td></tr>
+<tr><td><span class="folio">R.U.T. 76.123.456-0<span>FACTURA N° 2</span></span></td><td>Corporación Nacional del Cobre<div class="sub">61.704.000-K</div></td><td>18 oct</td><td><span class="pill go">Enviado al SII</span></td><td>Pagada</td><td class="r">$1.130.500</td></tr>
+<tr><td><span class="folio">R.U.T. 76.123.456-0<span>BOLETA N° 214</span></span></td><td>Consumidor final</td><td>18 oct</td><td><span class="pill ok">Aceptado</span></td><td>Pagada</td><td class="r">$19.980</td></tr>
+<tr><td><span class="folio" style="border-style:dashed;color:#55607A;border-color:#9AA3B8">BORRADOR<span>FACTURA</span></span></td><td>Cencosud Retail S.A.<div class="sub">96.571.220-8</div></td><td>17 oct</td><td><span class="pill dr">Borrador</span></td><td>—</td><td class="r">$571.200</td></tr>
+<tr><td><span class="folio">R.U.T. 76.123.456-0<span>FACTURA N° 1</span></span></td><td>Cencosud Retail S.A.<div class="sub">96.571.220-8</div></td><td>15 oct</td><td><span class="pill ok">Aceptado</span></td><td>Por cobrar</td><td class="r">$2.963.100</td></tr>
+<tr><td><span class="folio">R.U.T. 76.123.456-0<span>BOLETA N° 213</span></span></td><td>Consumidor final</td><td>15 oct</td><td><span class="pill ok">Aceptado</span></td><td>Pagada</td><td class="r">$35.970</td></tr>
+</table>
+</main></body></html>

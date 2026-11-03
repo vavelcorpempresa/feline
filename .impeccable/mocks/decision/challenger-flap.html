@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;font:14px/1.45 Barlow,system-ui,sans-serif;color:#F2F2EE;background:#1B1E21;display:grid;grid-template-columns:224px 1fr}
+nav{background:#111315;padding:24px 14px;border-right:1px solid #2C3136}
+.brand{font:700 20px "Barlow Condensed";letter-spacing:.04em;text-transform:uppercase;padding:0 10px}
+.co{font-size:12px;color:#A0A7AD;padding:2px 10px 20px}
+nav a{display:block;padding:8px 10px;color:#C7CCD0;border-radius:4px}
+nav a.on{background:#F2A900;color:#111315;font-weight:600}
+.sec{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#A0A7AD;padding:16px 10px 6px}
+main{padding:24px 28px;min-width:0}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+h1{font:700 30px "Barlow Condensed";text-transform:uppercase;letter-spacing:.03em}
+.btn{border:0;border-radius:4px;padding:10px 16px;font:600 14px Barlow;background:#F2A900;color:#111315}
+.ghost{background:transparent;color:#F2F2EE;border:1px solid #4A5157}
+.filters{display:flex;gap:6px;margin-bottom:14px}
+.tab{padding:6px 12px;border:1px solid #3A3F44;border-radius:4px;font-size:13px;color:#C7CCD0}
+.tab.on{background:#F2F2EE;color:#111315}
+.board{background:#111315;border:1px solid #2C3136;border-radius:6px;padding:8px 0}
+.h,.row{display:grid;grid-template-columns:150px 1fr 110px 260px 130px 150px;gap:14px;align-items:center;padding:0 18px}
+.h{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#A0A7AD;padding-top:8px;padding-bottom:10px;border-bottom:1px solid #2C3136}
+.row{height:58px;border-bottom:1px solid #22262A}
+.flaps{display:flex;gap:2px}
+.f{width:19px;height:30px;background:#26292D;border-radius:2px;display:grid;place-items:center;font:600 18px "Barlow Condensed";color:#F2F2EE;position:relative}
+.f:after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#0B0C0D}
+.amber .f{color:#F2A900}.red .f{color:#FF6B5E}.dim .f{color:#8A9197}
+.cell{font:600 19px "Barlow Condensed";letter-spacing:.03em;text-transform:uppercase}
+.sub{font-size:12px;color:#A0A7AD;font-family:Barlow;text-transform:none;letter-spacing:0;font-weight:400}
+.r{text-align:right}
+</style></head><body>
+<nav>
+<div class="brand">Feline Capital</div><div class="co">76.123.456-0</div>
+<a>Resumen</a><a class="on">Facturas y boletas</a><a>Libro de compras y ventas</a>
+<div class="sec">Contabilidad</div><a>Balance y F29</a><a>Gastos</a>
+<div class="sec">Empresa</div><a>Folios CAF</a><a>Envíos al SII</a><a>Certificado</a>
+</nav>
+<main>
+<div class="top"><h1>Facturas y boletas</h1><button class="btn ghost" style="margin-left:auto">Registrar pago</button><button class="btn">Emitir documento</button></div>
+<div class="filters"><span class="tab on">Todos</span><span class="tab">Facturas</span><span class="tab">Boletas</span><span class="tab">Notas de crédito</span><span class="tab" style="margin-left:auto">47 emitidos · 2 requieren atención</span></div>
+<div class="board">
+<div class="h"><span>Documento</span><span>Cliente</span><span>Hora</span><span>Estado SII</span><span>Cobro</span><span class="r">Total</span></div>
+<div class="row"><span class="cell">FAC 0004</span><span class="cell">Sur Austral<div class="sub">RUT receptor no autorizado</div></span><span class="cell">10:42</span><span class="flaps red"><i class="f">R</i><i class="f">E</i><i class="f">C</i><i class="f">H</i><i class="f">A</i><i class="f">Z</i><i class="f">A</i><i class="f">D</i><i class="f">O</i></span><span class="cell">—</span><span class="cell r">$845.920</span></div>
+<div class="row"><span class="cell">FAC 0002</span><span class="cell">Codelco</span><span class="cell">10:31</span><span class="flaps amber"><i class="f">E</i><i class="f">N</i><i class="f">V</i><i class="f">I</i><i class="f">A</i><i class="f">D</i><i class="f">O</i></span><span class="cell">Pagada</span><span class="cell r">$1.130.500</span></div>
+<div class="row"><span class="cell">BOL 0214</span><span class="cell">Consumidor final</span><span class="cell">10:12</span><span class="flaps"><i class="f">A</i><i class="f">C</i><i class="f">E</i><i class="f">P</i><i class="f">T</i><i class="f">A</i><i class="f">D</i><i class="f">O</i></span><span class="cell">Pagada</span><span class="cell r">$19.980</span></div>
+<div class="row"><span class="cell">BORRADOR</span><span class="cell">Cencosud Retail</span><span class="cell">Ayer</span><span class="flaps dim"><i class="f">B</i><i class="f">O</i><i class="f">R</i><i class="f">R</i><i class="f">A</i><i class="f">D</i><i class="f">O</i><i class="f">R</i></span><span class="cell">—</span><span class="cell r">$571.200</span></div>
+<div class="row"><span class="cell">FAC 0001</span><span class="cell">Cencosud Retail</span><span class="cell">15 oct</span><span class="flaps"><i class="f">A</i><i class="f">C</i><i class="f">E</i><i class="f">P</i><i class="f">T</i><i class="f">A</i><i class="f">D</i><i class="f">O</i></span><span class="cell">Por cobrar</span><span class="cell r">$2.963.100</span></div>
+<div class="row"><span class="cell">BOL 0213</span><span class="cell">Consumidor final</span><span class="cell">15 oct</span><span class="flaps"><i class="f">A</i><i class="f">C</i><i class="f">E</i><i class="f">P</i><i class="f">T</i><i class="f">A</i><i class="f">D</i><i class="f">O</i></span><span class="cell">Pagada</span><span class="cell r">$35.970</span></div>
+</div>
+</main></body></html>

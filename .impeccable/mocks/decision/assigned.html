@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;font:14px/1.45 Archivo,system-ui,sans-serif;color:#1B1F23;background:#EEF2F1;display:grid;grid-template-columns:232px 1fr}
+.mono{font-family:"Spline Sans Mono",monospace;font-variant-numeric:tabular-nums}
+nav{background:#242A30;color:#C9D1D4;padding:22px 14px;display:flex;flex-direction:column;gap:2px}
+.brand{color:#fff;font-weight:700;font-size:19px;letter-spacing:-.01em;padding:0 10px 4px}
+.co{font-size:12px;color:#A3ADB1;padding:0 10px 22px;border-bottom:1px solid #353D44;margin-bottom:14px}
+.sec{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#A3ADB1;padding:14px 10px 6px}
+nav a{display:block;padding:8px 10px;border-radius:6px;color:#C9D1D4;text-decoration:none}
+nav a.on{background:#EEF2F1;color:#1B1F23;font-weight:600}
+main{display:grid;grid-template-columns:1fr 432px;min-width:0}
+.work{padding:26px 28px;min-width:0}
+.top{display:flex;align-items:center;gap:16px}
+h1{font-size:24px;font-weight:700;letter-spacing:-.015em}
+.btn{margin-left:auto;background:#0E7C86;color:#fff;border:0;border-radius:6px;padding:10px 16px;font:600 14px Archivo}
+.ghost{background:#fff;color:#1B1F23;border:1px solid #C9D3D2}
+.tally{margin:14px 0 18px;display:flex;gap:28px;font-size:13px;color:#4A5459;border-top:1px solid #C9D3D2;border-bottom:1px solid #C9D3D2;padding:10px 0}
+.tally b{color:#1B1F23;font-weight:600}
+.warn b{color:#C2410C}
+.filters{display:flex;gap:8px;margin-bottom:12px}
+.tab{padding:6px 12px;border-radius:6px;border:1px solid #C9D3D2;background:#fff;font-size:13px}
+.tab.on{background:#1B1F23;color:#fff;border-color:#1B1F23}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #C9D3D2;border-radius:8px;overflow:hidden}
+th{text-align:left;font-size:12px;font-weight:600;color:#5B666B;padding:10px 14px;border-bottom:1px solid #C9D3D2;background:#F7F9F8}
+td{padding:11px 14px;border-bottom:1px solid #E1E7E6;vertical-align:top}
+tr.sel td{background:#E3F0EF;box-shadow:inset 3px 0 0 #0E7C86}
+.r{text-align:right}
+.sub{font-size:12px;color:#6B767A}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%}
+.ok{background:#2E7D4F}.go{background:#0E7C86}.no{background:#C2410C}.dr{background:#9AA5A9}
+aside{background:#DDE4E3;border-left:1px solid #C9D3D2;padding:26px 30px;display:flex;flex-direction:column;align-items:center}
+.hint{align-self:stretch;display:flex;justify-content:space-between;font-size:12px;color:#5B666B;margin-bottom:14px}
+.ticket{width:330px;background:#FBFCFC;padding:22px 22px 30px;font-family:"Spline Sans Mono",monospace;font-size:12.5px;line-height:1.6;color:#1B1F23;position:relative;box-shadow:0 1px 0 #C9D3D2}
+.ticket:after{content:"";position:absolute;left:0;right:0;bottom:-10px;height:10px;background:linear-gradient(-45deg,transparent 7px,#FBFCFC 0) 0 0/14px 10px,linear-gradient(45deg,transparent 7px,#FBFCFC 0) 0 0/14px 10px}
+.c{text-align:center}.hr{border-top:1px dashed #9AA5A9;margin:9px 0}
+.box{border:1.5px solid #C2410C;color:#C2410C;text-align:center;padding:6px;margin:8px 0;font-weight:600}
+.row{display:flex;justify-content:space-between}
+.big{font-size:17px;font-weight:600}
+.pdf{height:62px;margin:12px 0 4px;background:repeating-linear-gradient(90deg,#1B1F23 0 2px,transparent 2px 3px,#1B1F23 3px 4px,transparent 4px 7px);opacity:.9}
+.acts{display:flex;gap:8px;margin-top:22px}
+</style></head><body>
+<nav>
+<div class="brand">Feline Capital</div>
+<div class="co">Feline Cloud Technologies SpA · 76.123.456-0</div>
+<a>Resumen</a><a class="on">Facturas y boletas</a><a>Libro de compras y ventas</a>
+<div class="sec">Contabilidad</div><a>Balance y F29</a><a>Gastos</a>
+<div class="sec">Empresa</div><a>Folios CAF</a><a>Envíos al SII</a><a>Certificado y proyectos</a>
+</nav>
+<main>
+<section class="work">
+<div class="top"><h1>Facturas y boletas</h1><button class="btn ghost">Registrar pago</button><button class="btn" style="margin-left:0">Emitir documento</button></div>
+<div class="tally mono"><span>Octubre 2026 · <b>47</b> emitidos</span><span>Aceptados <b>44</b></span><span class="warn">Requieren atención <b>2</b></span><span>Por cobrar <b>$3.808.020</b></span></div>
+<div class="filters"><span class="tab on">Todos</span><span class="tab">Facturas</span><span class="tab">Boletas</span><span class="tab">Notas de crédito</span><span class="tab" style="margin-left:auto">Estado SII: todos ▾</span></div>
+<table>
+<tr><th>Documento</th><th>Cliente</th><th>Estado SII</th><th>Cobro</th><th class="r">Total</th></tr>
+<tr><td class="mono">FAC 000004<div class="sub">18 oct</div></td><td>Distribuidora Sur Austral S.A.<div class="sub mono">96.512.340-2</div></td><td><span class="st"><i class="dot no"></i>Rechazado</span><div class="sub">RUT receptor no autorizado</div></td><td>—</td><td class="r mono">$845.920</td></tr>
+<tr class="sel"><td class="mono">FAC 000002<div class="sub">18 oct</div></td><td>Corporación Nacional del Cobre de Chile<div class="sub mono">61.704.000-K</div></td><td><span class="st"><i class="dot go"></i>Enviado al SII</span><div class="sub mono">Track 5947557402</div></td><td>Pagada</td><td class="r mono">$1.130.500</td></tr>
+<tr><td class="mono">BOL 000214<div class="sub">18 oct</div></td><td>Consumidor final</td><td><span class="st"><i class="dot ok"></i>Aceptado</span></td><td>Pagada</td><td class="r mono">$19.980</td></tr>
+<tr><td class="mono">FAC 000003<div class="sub">17 oct</div></td><td>Cencosud Retail S.A.<div class="sub mono">96.571.220-8</div></td><td><span class="st"><i class="dot dr"></i>Borrador</span><div class="sub">Sin folio aún</div></td><td>—</td><td class="r mono">$571.200</td></tr>
+<tr><td class="mono">FAC 000001<div class="sub">15 oct</div></td><td>Cencosud Retail S.A.<div class="sub mono">96.571.220-8</div></td><td><span class="st"><i class="dot ok"></i>Aceptado</span></td><td>Por cobrar</td><td class="r mono">$2.963.100</td></tr>
+<tr><td class="mono">BOL 000213<div class="sub">15 oct</div></td><td>Consumidor final</td><td><span class="st"><i class="dot ok"></i>Aceptado</span></td><td>Pagada</td><td class="r mono">$35.970</td></tr>
+</table>
+</section>
+<aside>
+<div class="hint"><span>FAC 000002</span><span>J / K para recorrer</span></div>
+<div class="ticket">
+<div class="c" style="font-weight:600">FELINE CLOUD TECHNOLOGIES SPA</div>
+<div class="c">Av. Providencia 1234 · Providencia</div>
+<div class="box">R.U.T. 76.123.456-0<br>FACTURA ELECTRÓNICA<br>N° 2</div>
+<div>Señor(es): CODELCO</div><div>RUT: 61.704.000-K</div><div>Fecha: 18-10-2026 · Contado</div>
+<div class="hr"></div>
+<div class="row"><span>1 Servicio de integración</span><span>950.000</span></div>
+<div class="hr"></div>
+<div class="row"><span>Neto</span><span>950.000</span></div>
+<div class="row"><span>IVA 19%</span><span>180.500</span></div>
+<div class="row big"><span>TOTAL</span><span>$1.130.500</span></div>
+<div class="pdf"></div>
+<div class="c" style="font-size:12px">Timbre electrónico SII · Res. 0 de 2026</div>
+</div>
+<div class="acts"><button class="btn ghost" style="margin:0">PDF</button><button class="btn ghost" style="margin:0">XML</button><button class="btn ghost" style="margin:0">Nota de crédito</button></div>
+</aside>
+</main></body></html>

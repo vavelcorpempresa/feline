@@ -1,0 +1,550 @@
+// ============================================================================
+// FELINE ERP & DTE ENGINE - PRISMA SCHEMA (ODOO account + l10n_cl + SII CHILE)
+// Ingeniería Inversa y Reconstrucción REA de https://github.com/odoo/odoo
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Ambiente de operación del SII por tenant
+enum SiiEnvironment {
+  CERTIFICACION // maullin.sii.cl (DTE) / apicert.sii.cl & pangal.sii.cl (Boletas)
+  PRODUCCION    // palena.sii.cl  (DTE) / api.sii.cl     & rahue.sii.cl  (Boletas)
+}
+
+/// Clasificación tributaria del contribuyente en Odoo (`l10n_cl_sii_taxpayer_type` en `res.partner`)
+enum L10nClTaxpayerType {
+  VAT_AFFECTED_1ST_CAT // '1' - Contribuyente Afecto a IVA (1a Categoría: Recibe Factura 33, Exenta 34, NC 61, ND 56)
+  FEES_RECEIPT_ISSUER  // '2' - Emisor Boleta de Honorarios (2a Categoría: Código 71)
+  END_CONSUMER         // '3' - Consumidor Final (Recibe Boleta 39, Boleta Exenta 41, NC 61, ND 56)
+  FOREIGNER            // '4' - Extranjero (Factura de Compra 46 / Exportación)
+}
+
+/// Estado contable del Asiento / Factura en Odoo (`account.move.state`)
+enum AccountMoveState {
+  DRAFT  // Borrador (Editable, sin folio asignado aún)
+  POSTED // Publicado / Validado (`action_post` -> Folio CAF asignado y DTE firmado)
+  CANCEL // Cancelado
+}
+
+/// Estado de pago del Asiento / Factura en Odoo (`account.move.payment_state`)
+enum AccountMovePaymentState {
+  NOT_PAID // No pagado
+  IN_PAYMENT
+  PAID     // Pagado completamente
+  PARTIAL  // Pagado parcialmente
+  REVERSED // Revertido por Nota de Crédito
+}
+
+/// Tipo de Movimiento Contable en Odoo (`account.move.move_type`)
+enum AccountMoveType {
+  OUT_INVOICE // Factura / Boleta de Venta a Cliente
+  OUT_REFUND  // Nota de Crédito de Venta a Cliente (Tipo 61)
+  IN_INVOICE  // Factura de Proveedor / Factura de Compra (Tipo 46)
+  IN_REFUND   // Nota de Crédito de Proveedor
+  ENTRY       // Asiento Contable Puro
+}
+
+/// Tipo de Diario Contable en Odoo (`account.journal.type`)
+enum AccountJournalType {
+  SALE
+  PURCHASE
+  CASH
+  BANK
+  GENERAL
+}
+
+/// Clasificación de Cuentas Contables en Odoo 18 (`account.account.account_type`)
+enum OdooAccountType {
+  ASSET_RECEIVABLE
+  ASSET_CASH
+  ASSET_CURRENT
+  ASSET_NON_CURRENT
+  ASSET_PREPAYMENTS
+  ASSET_FIXED
+  LIABILITY_PAYABLE
+  LIABILITY_CREDIT_CARD
+  LIABILITY_CURRENT
+  LIABILITY_NON_CURRENT
+  EQUITY
+  EQUITY_UNAFFECTED
+  INCOME
+  INCOME_OTHER
+  EXPENSE
+  EXPENSE_DEPRECIATION
+  EXPENSE_DIRECT_COST
+  OFF_BALANCE
+}
+
+/// Grupo interno de Cuenta en Odoo (`account.account.internal_group`) para el Balance de 8 Columnas SII
+enum OdooAccountInternalGroup {
+  ASSET     // Columna Inventario: Activo
+  LIABILITY // Columna Inventario: Pasivo
+  EQUITY    // Columna Inventario: Pasivo/Patrimonio
+  INCOME    // Columna Resultados: Ganancia
+  EXPENSE   // Columna Resultados: Pérdida
+  OFF       // Cuentas de Orden
+}
+
+/// Ciclo de vida electrónico DTE ante el SII (`l10n_cl_dte_status`)
+enum DteStatus {
+  PENDIENTE           // Creado en BD, sin XML o sin firma aún
+  FIRMADO             // TED generado y Documento XML firmado con XMLDSig (`not_sent` en Odoo)
+  EN_LOTE             // Agrupado en un EnvioDTE / EnvioBoleta
+  ENVIADO             // Transmitido al SII (`ask_for_status` en Odoo, TrackID asignado)
+  ACEPTADO            // SII Estado: EPR / DOK (`accepted` en Odoo)
+  ACEPTADO_CON_REPARO // SII Estado: RPR (`objected` en Odoo)
+  RECHAZADO           // SII Estado: RCH / RSC / FAU (`rejected` en Odoo)
+  ANULADO             // Anulado mediante Nota de Crédito (61)
+}
+
+/// Estado del sobre de envío masivo (EnvioDTE / EnvioBoleta)
+enum EnvioStatus {
+  GENERADO
+  ENVIADO
+  PROCESANDO
+  ACEPTADO
+  RECHAZADO
+  ERROR_CONEXION
+}
+
+/// 1. EMPRESA EMISORA (TENANT / `res.company` en Odoo)
+model Tenant {
+  id              String             @id @default(uuid()) @db.Uuid
+  rut             String             @unique @db.VarChar(12) // Formato: 76123456-0
+  razonSocial     String             @db.VarChar(100)
+  giro            String             @db.VarChar(80)
+  acteco          Int[]
+  taxpayerType    L10nClTaxpayerType @default(VAT_AFFECTED_1ST_CAT)
+  direccionOrigen String             @db.VarChar(70)
+  comunaOrigen    String             @db.VarChar(20)
+  ciudadOrigen    String             @db.VarChar(20)
+  codigoSucursal  String?            @db.VarChar(20)
+  fchResol        DateTime           @db.Date
+  nroResol        Int
+  rutEnvia        String             @db.VarChar(12)
+  environment     SiiEnvironment     @default(CERTIFICACION)
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relaciones con aislamiento estricto por tenantId
+  certificados    CertificadoDigital[]
+  clientes        ClienteReceptor[]
+  cafs            CafFolio[]
+  documentos      DocumentoDTE[]
+  envios          EnvioDteLote[]
+  cuentas         AccountAccount[]
+  diarios         AccountJournal[]
+  impuestos       AccountTax[]
+  asientos        AccountMove[]
+  pagos           AccountPayment[]
+  apiClients      ApiClient[]
+
+  @@index([rut])
+  @@map("tenants")
+}
+
+/// 1.B PLAN DE CUENTAS CHILENO (`account.account` en Odoo `l10n_cl`)
+model AccountAccount {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  tenantId              String                   @db.Uuid
+  code                  String                   @db.VarChar(16) // Código 6 dígitos SII/IFRS (Ej: "110310", "210710", "510110")
+  name                  String                   @db.VarChar(100)
+  accountType           OdooAccountType
+  internalGroup         OdooAccountInternalGroup
+  reconcile             Boolean                  @default(false) // true en Clientes (110310) y Proveedores (210210)
+  includeInitialBalance Boolean                  @default(true)  // true para Balance (Activo/Pasivo/Patrimonio), false para P&L
+  siiF22Code            Int?                                     // Código recuadro Balance SII F22
+  deprecated            Boolean                  @default(false)
+  createdAt             DateTime                 @default(now())
+
+  tenant                Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  moveLines             AccountMoveLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, internalGroup])
+  @@map("account_accounts")
+}
+
+/// 2. CERTIFICADO DIGITAL (.PFX / .P12) POR EMPRESA EMISORA (`certificate.certificate` en Odoo)
+model CertificadoDigital {
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @db.Uuid
+  rutTitular          String   @db.VarChar(12)
+  nombreTitular       String   @db.VarChar(100)
+  pfxEncrypted        Bytes
+  pfxIv               String   @db.VarChar(64)
+  pfxAuthTag          String   @db.VarChar(64)
+  passphraseEncrypted String
+  passphraseIv        String   @db.VarChar(64)
+  passphraseAuthTag   String   @db.VarChar(64)
+  validFrom           DateTime
+  validTo             DateTime
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
+  @@map("certificados_digitales")
+}
+
+/// 3. CLIENTES / RECEPTORES POR EMPRESA (`res.partner` + `l10n_cl` en Odoo)
+model ClienteReceptor {
+  id           String             @id @default(uuid()) @db.Uuid
+  tenantId     String             @db.Uuid
+  rut          String             @db.VarChar(12)  // `vat` en Odoo
+  razonSocial  String             @db.VarChar(100) // `name` en Odoo
+  giro         String             @db.VarChar(40)  // `l10n_cl_activity_description` en Odoo
+  taxpayerType L10nClTaxpayerType @default(VAT_AFFECTED_1ST_CAT) // `l10n_cl_sii_taxpayer_type`
+  countryCode  String             @default("CL") @db.VarChar(2)
+  direccion    String             @db.VarChar(70)
+  comuna       String             @db.VarChar(20)
+  ciudad       String             @db.VarChar(20)
+  contacto     String?            @db.VarChar(80)
+  correoDte    String?            @db.VarChar(80)  // `l10n_cl_dte_email` en Odoo
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documentos   DocumentoDTE[]
+  asientos     AccountMove[]
+  pagos        AccountPayment[]
+
+  @@unique([tenantId, rut])
+  @@index([tenantId])
+  @@map("clientes_receptores")
+}
+
+/// 4. CATÁLOGO DE DOCUMENTOS LATAM (`l10n_latam.document.type` en Odoo `l10n_cl`)
+model L10nLatamDocumentType {
+  code          Int      @id                     // Ej: 33, 34, 39, 41, 46, 52, 56, 61, 71
+  name          String   @db.VarChar(100)        // Ej: "Factura Electrónica"
+  reportName    String   @db.VarChar(60)         // Ej: "FACTURA ELECTRÓNICA"
+  internalType  String   @db.VarChar(30)         // 'invoice', 'invoice_in', 'debit_note', 'credit_note', 'stock_picking'
+  docCodePrefix String   @db.VarChar(10)         // 'FAC', 'FNA', 'BEL', 'BXE', 'N/C', 'N/D', 'GDE'
+  countryCode   String   @default("CL") @db.VarChar(2)
+  l10nClActive  Boolean  @default(true)
+
+  asientos      AccountMove[]
+
+  @@map("l10n_latam_document_types")
+}
+
+/// 5. DIARIOS CONTABLES (`account.journal` en Odoo)
+model AccountJournal {
+  id                    String             @id @default(uuid()) @db.Uuid
+  tenantId              String             @db.Uuid
+  code                  String             @db.VarChar(10) // Ej: "INV", "BOL", "BILL", "BNK1"
+  name                  String             @db.VarChar(80) // Ej: "Facturas de Cliente (Ventas)"
+  type                  AccountJournalType @default(SALE)
+  l10nLatamUseDocuments Boolean            @default(true)  // `l10n_latam_use_documents` en Odoo
+  isActive              Boolean            @default(true)
+  createdAt             DateTime           @default(now())
+
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asientos              AccountMove[]
+  pagos                 AccountPayment[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, type])
+  @@map("account_journals")
+}
+
+/// 6. IMPUESTOS CHILENOS (`account.tax` en Odoo `l10n_cl`)
+model AccountTax {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  name         String   @db.VarChar(60)             // Ej: "IVA 19% Ventas", "Exento"
+  amount       Decimal  @db.Decimal(5, 2)           // 19.00 o 0.00
+  amountType   String   @default("percent")         // 'percent' | 'fixed'
+  typeTaxUse   String   @default("sale")            // 'sale' | 'purchase'
+  priceInclude Boolean  @default(false)             // En Boleta 39 suele ser true (MntBruto)
+  siiTaxCode   Int?                                 // Código impuesto SII (14 = IVA 19%)
+  isExempt     Boolean  @default(false)             // true => IndExe = 1 en DTE
+  isActive     Boolean  @default(true)
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, typeTaxUse])
+  @@map("account_taxes")
+}
+
+/// 7. ASIENTO CONTABLE / FACTURA (`account.move` en Odoo + `l10n_cl_edi`)
+/// Representa el documento de negocio en ciclo Borrador -> Publicado -> Pagado -> Revertido,
+/// vinculado 1-a-1 con el DocumentoDTE firmado para el SII al ejecutarse `action_post()`.
+model AccountMove {
+  id                      String                  @id @default(uuid()) @db.Uuid
+  tenantId                String                  @db.Uuid
+  journalId               String                  @db.Uuid
+  partnerId               String                  @db.Uuid
+  documentTypeCode        Int                                             // FK a L10nLatamDocumentType (33, 34, 39, 41, 46, 56, 61)
+  name                    String                  @db.VarChar(60)         // "/" en Draft, luego "FAC 000001" al publicar
+  l10nLatamDocumentNumber String?                 @db.VarChar(20)         // Folio SII en formato numérico puro (validado por regex Odoo)
+  moveType                AccountMoveType         @default(OUT_INVOICE)
+  state                   AccountMoveState        @default(DRAFT)
+  paymentState            AccountMovePaymentState @default(NOT_PAID)
+  invoiceDate             DateTime                @db.Date
+  invoiceDateDue          DateTime?               @db.Date
+  formaPagoSii            Int                     @default(1)             // 1: Contado, 2: Crédito, 3: Sin Costo
+  amountUntaxed           Int                     @default(0)             // MntNeto
+  amountExempt            Int                     @default(0)             // MntExe
+  amountTax               Int                     @default(0)             // IVA (19%)
+  amountTotal             Int                     @default(0)             // MntTotal
+  amountResidual          Int                     @default(0)             // Saldo pendiente por cobrar/pagar
+  reversedEntryId         String?                 @db.Uuid                // Si es Nota de Crédito (61), apunta al AccountMove original
+  documentoDteId          String?                 @unique @db.Uuid        // Vínculo al DTE XML firmado y timbrado
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  tenant                  Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  journal                 AccountJournal          @relation(fields: [journalId], references: [id])
+  partner                 ClienteReceptor         @relation(fields: [partnerId], references: [id])
+  documentType            L10nLatamDocumentType   @relation(fields: [documentTypeCode], references: [code])
+  reversedEntry           AccountMove?            @relation("MoveReversal", fields: [reversedEntryId], references: [id])
+  reversalMoves           AccountMove[]           @relation("MoveReversal")
+  documentoDte            DocumentoDTE?           @relation(fields: [documentoDteId], references: [id])
+  lines                   AccountMoveLine[]
+  references              L10nClAccountReference[]
+  payments                AccountPayment[]
+
+  @@index([tenantId, state, moveType])
+  @@index([tenantId, documentTypeCode, l10nLatamDocumentNumber])
+  @@map("account_moves")
+}
+
+/// 8. LÍNEAS DE FACTURA / APUNTES CONTABLES PARTIDA DOBLE (`account.move.line` en Odoo)
+model AccountMoveLine {
+  id             String          @id @default(uuid()) @db.Uuid
+  moveId         String          @db.Uuid
+  accountId      String?         @db.Uuid                      // Cuenta Contable (`account.account`)
+  sequence       Int             @default(1)                   // `NroLinDet` en XML SII
+  productCode    String?         @db.VarChar(35)               // `VlrCodigo` en XML SII
+  name           String          @db.VarChar(80)               // `NmbItem` o Glosa del apunte contable
+  description    String?         @db.VarChar(1000)             // `DscItem` en XML SII
+  quantity       Decimal         @default(1) @db.Decimal(12, 4)// `QtyItem`
+  uomName        String          @default("UN") @db.VarChar(4) // `UnmdItem`
+  priceUnit      Decimal         @db.Decimal(14, 2)            // `PrcItem`
+  discountPct    Decimal         @default(0) @db.Decimal(5, 2) // `DescuentoPct`
+  discountFixed  Int             @default(0)                   // `DescuentoMonto`
+  isExempt       Boolean         @default(false)               // true => `IndExe = 1`
+  taxRate        Decimal         @default(19.0) @db.Decimal(5, 2)
+  priceSubtotal  Int                                           // `MontoItem` (Neto o Exento de la línea)
+  priceTotal     Int                                           // Subtotal + IVA de la línea
+  debit          Int             @default(0)                   // DEBE (Partida Doble Odoo)
+  credit         Int             @default(0)                   // HABER (Partida Doble Odoo)
+  balance        Int             @default(0)                   // debit - credit
+  reconciled     Boolean         @default(false)               // Conciliado con pago o NC
+  matchingNumber String?         @db.VarChar(20)               // Código de conciliación Odoo (Ej: "A001")
+
+  move           AccountMove     @relation(fields: [moveId], references: [id], onDelete: Cascade)
+  account        AccountAccount? @relation(fields: [accountId], references: [id])
+
+  @@index([moveId])
+  @@index([accountId])
+  @@map("account_move_lines")
+}
+
+/// 9. REFERENCIAS DOCUMENTALES SII (`l10n_cl.account.reference` en Odoo)
+/// Obligatorias al emitir Notas de Crédito (61), Notas de Débito (56) o referenciar Órdenes de Compra (801)
+model L10nClAccountReference {
+  id                String      @id @default(uuid()) @db.Uuid
+  moveId            String      @db.Uuid
+  sequence          Int         @default(1)        // `NroLinRef`
+  originDocTypeCode String      @db.VarChar(3)     // `TpoDocRef` (Ej: "33", "39", "801", "SET")
+  originDocNumber   String      @db.VarChar(18)    // `FolioRef`
+  referenceDocCode  Int?                           // `CodRef` SII: 1=Anula, 2=Corrige Texto, 3=Corrige Montos
+  reason            String?     @db.VarChar(90)    // `RazonRef`
+  date              DateTime    @db.Date           // `FchRef`
+
+  move              AccountMove @relation(fields: [moveId], references: [id], onDelete: Cascade)
+
+  @@index([moveId])
+  @@map("l10n_cl_account_references")
+}
+
+/// 10. PAGOS Y CONCILIACIÓN (`account.payment` en Odoo)
+model AccountPayment {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @db.Uuid
+  moveId      String          @db.Uuid
+  journalId   String          @db.Uuid
+  partnerId   String          @db.Uuid
+  amount      Int
+  paymentDate DateTime        @db.Date
+  reference   String?         @db.VarChar(80)
+  createdAt   DateTime        @default(now())
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  move        AccountMove     @relation(fields: [moveId], references: [id], onDelete: Cascade)
+  journal     AccountJournal  @relation(fields: [journalId], references: [id])
+  partner     ClienteReceptor @relation(fields: [partnerId], references: [id])
+
+  @@index([tenantId, moveId])
+  @@map("account_payments")
+}
+
+/// 11. CONTROL DE FOLIOS Y CAF (`dte.caf` en Odoo `l10n_cl_edi`)
+model CafFolio {
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @db.Uuid
+  tipoDte             Int
+  folioDesde          Int
+  folioHasta          Int
+  folioActual         Int
+  fechaAutorizacion   DateTime @db.Date
+  xmlCafNodo          String   @db.Text
+  privateKeyEncrypted String   @db.Text
+  privateKeyIv        String   @db.VarChar(64)
+  privateKeyAuthTag   String   @db.VarChar(64)
+  publicKeyModulus    String   @db.Text
+  publicKeyExponent   String   @db.VarChar(32)
+  agotado             Boolean  @default(false)
+  activo              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documentos          DocumentoDTE[]
+
+  @@unique([tenantId, tipoDte, folioDesde, folioHasta])
+  @@index([tenantId, tipoDte, activo, agotado])
+  @@map("caf_folios")
+}
+
+/// 12. DOCUMENTO TRIBUTARIO ELECTRÓNICO (DTE XML FIRMADO Y TIMBRADO)
+model DocumentoDTE {
+  id              String      @id @default(uuid()) @db.Uuid
+  tenantId        String      @db.Uuid
+  receptorId      String      @db.Uuid
+  cafId           String      @db.Uuid
+  envioLoteId     String?     @db.Uuid
+  apiClientId     String?     @db.Uuid                 // Integración externa que solicitó el documento
+  referenciaExterna String?   @db.VarChar(100)         // Id del documento en el proyecto (ej. pedido)
+  tipoDte         Int
+  folio           Int
+  fechaEmision    DateTime    @db.Date
+  fechaVenc       DateTime?   @db.Date
+  indServicio     Int?
+  mntNeto         Int         @default(0)
+  mntExento       Int         @default(0)
+  tasaIva         Decimal     @default(19.0) @db.Decimal(5, 2)
+  iva             Int         @default(0)
+  mntTotal        Int
+  detallesJson    Json
+  referenciasJson Json?
+  tedXml          String?     @db.Text
+  dteXmlFirmado   String?     @db.Text
+  estado          DteStatus   @default(PENDIENTE)
+  glosaEstadoSii  String?     @db.Text
+  trackId         String?     @db.VarChar(32)
+  siiConsultadoAt DateTime?                            // Última consulta de estado al SII
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  receptor        ClienteReceptor @relation(fields: [receptorId], references: [id])
+  caf             CafFolio        @relation(fields: [cafId], references: [id])
+  envioLote       EnvioDteLote?   @relation(fields: [envioLoteId], references: [id])
+  apiClient       ApiClient?      @relation(fields: [apiClientId], references: [id])
+  accountMove     AccountMove?
+  idempotencias   ApiIdempotencia[]
+  webhooks        WebhookEvento[]
+
+  @@unique([tenantId, tipoDte, folio])
+  @@index([tenantId, estado])
+  @@index([tenantId, trackId])
+  @@index([apiClientId, referenciaExterna])
+  @@index([tenantId, createdAt])
+  @@map("documentos_dte")
+}
+
+/// 13. LOTE DE ENVÍO AL SII (EnvioDTE / EnvioBoleta)
+model EnvioDteLote {
+  id             String      @id @default(uuid()) @db.Uuid
+  tenantId       String      @db.Uuid
+  rutEmisor      String      @db.VarChar(12)
+  rutEnvia       String      @db.VarChar(12)
+  rutReceptor    String      @default("60803000-K") @db.VarChar(12)
+  esBoleta       Boolean     @default(false)
+  trackId        String?     @db.VarChar(32)
+  xmlEnvio       String      @db.Text
+  estado         EnvioStatus @default(GENERADO)
+  respuestaSii   Json?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documentos     DocumentoDTE[]
+
+  @@index([tenantId, trackId])
+  @@map("envios_dte_lotes")
+}
+
+/// 14. PROYECTO CONECTADO A FELINE (FUGAR Marketplace u otro sistema propio)
+/// Cada clave pertenece a UNA empresa emisora: solo puede operar con el RUT de ese tenant.
+/// Un proyecto que factura para varias empresas tiene una clave por empresa.
+model ApiClient {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  nombre        String   @db.VarChar(80)
+  scopes        String[] @default(["documentos:emitir", "documentos:leer", "empresa:leer"])
+  keyPrefix     String   @db.VarChar(16)           // Primeros caracteres de la clave, para identificarla
+  keyHash       String   @unique @db.VarChar(64)   // SHA-256 de la clave (la clave en claro nunca se guarda)
+  webhookUrl    String?  @db.VarChar(500)
+  webhookSecret String?  @db.VarChar(200)
+  isActive      Boolean  @default(true)
+  lastUsedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documentos    DocumentoDTE[]
+  idempotencias ApiIdempotencia[]
+  webhooks      WebhookEvento[]
+
+  @@index([tenantId])
+  @@map("api_clients")
+}
+
+/// 15. CLAVES DE IDEMPOTENCIA (`Idempotency-Key`): un reintento nunca emite dos documentos
+model ApiIdempotencia {
+  id          String        @id @default(uuid()) @db.Uuid
+  apiClientId String        @db.Uuid
+  clave       String        @db.VarChar(200)
+  requestHash String        @db.VarChar(64)       // SHA-256 del cuerpo: misma clave con otro cuerpo => 422
+  documentoId String?       @db.Uuid              // null mientras la emisión está en curso
+  createdAt   DateTime      @default(now())
+
+  apiClient   ApiClient     @relation(fields: [apiClientId], references: [id], onDelete: Cascade)
+  documento   DocumentoDTE? @relation(fields: [documentoId], references: [id])
+
+  @@unique([apiClientId, clave])
+  @@map("api_idempotencias")
+}
+
+/// 16. BANDEJA DE SALIDA DE WEBHOOKS (entrega con reintentos y backoff)
+model WebhookEvento {
+  id            String       @id @default(uuid()) @db.Uuid
+  apiClientId   String       @db.Uuid
+  documentoId   String?      @db.Uuid               // null en eventos sin documento (ej. webhook.prueba)
+  evento        String       @default("documento.estado") @db.VarChar(40)
+  payload       Json
+  intentos      Int          @default(0)
+  proximoIntento DateTime    @default(now())
+  entregadoAt   DateTime?
+  ultimoError   String?      @db.Text
+  createdAt     DateTime     @default(now())
+
+  apiClient     ApiClient    @relation(fields: [apiClientId], references: [id], onDelete: Cascade)
+  documento     DocumentoDTE? @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  @@index([entregadoAt, proximoIntento])
+  @@map("webhook_eventos")
+}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Text:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:1440px;height:900px;overflow:hidden;font:14px/1.45 "Red Hat Text",system-ui,sans-serif;color:#111;background:#F7F7F5;display:grid;grid-template-columns:228px 1fr 470px}
+.m{font-family:"Red Hat Mono",monospace;font-variant-numeric:tabular-nums}
+nav{background:#111;color:#C9CDD1;padding:24px 14px}
+.brand{color:#fff;font-weight:700;font-size:19px;padding:0 10px}
+.co{font-size:12px;color:#A3A9AE;padding:2px 10px 20px}
+nav a{display:block;padding:8px 10px;border-radius:6px}
+nav a.on{background:#fff;color:#111;font-weight:600}
+.sec{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#A3A9AE;padding:16px 10px 6px}
+main{padding:24px 26px;min-width:0}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+h1{font-size:24px;font-weight:700}
+.btn{border:0;border-radius:6px;padding:10px 16px;font:600 14px "Red Hat Text";background:#111;color:#fff}
+.ghost{background:#fff;color:#111;border:1px solid #CFD3D6}
+.filters{display:flex;gap:6px;margin-bottom:12px}
+.tab{padding:6px 12px;border:1px solid #CFD3D6;border-radius:6px;font-size:13px;background:#fff}
+.tab.on{background:#111;color:#fff;border-color:#111}
+.list{background:#fff;border:1px solid #DDE0E2;border-radius:8px}
+.it{display:grid;grid-template-columns:70px 120px 1fr 120px;gap:12px;padding:12px 16px;border-bottom:1px solid #ECEEEF;align-items:center}
+.it.alert{background:#FDECE6;box-shadow:inset 4px 0 0 #E4572E}
+.it.sel{background:#F0F1F2}
+.sub{font-size:12px;color:#5B6670}
+.r{text-align:right}
+.tag{font-size:12px;font-weight:600}
+.no{color:#B83A16}
+aside{padding:24px 26px;border-left:1px solid #DDE0E2;background:#ECEDEB}
+.pass{background:#fff;border-radius:12px;border:1px solid #D2D6D9;overflow:hidden}
+.seg{padding:14px 18px;border-bottom:1px dashed #C4C9CD;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lab{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#5B6670}
+.val{font-weight:600}
+.big{font-size:30px;font-weight:700;letter-spacing:-.01em}
+.hd{background:#111;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+.hd .lab{color:#B9BEC3}
+.code{height:84px;margin:14px 18px;background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 3px,#111 3px 5px,transparent 5px 8px)}
+.acts{display:flex;gap:8px;margin-top:16px}
+</style></head><body>
+<nav>
+<div class="brand">Feline Capital</div><div class="co">76.123.456-0</div>
+<a>Resumen</a><a class="on">Facturas y boletas</a><a>Libro de compras y ventas</a>
+<div class="sec">Contabilidad</div><a>Balance y F29</a><a>Gastos</a>
+<div class="sec">Empresa</div><a>Folios CAF</a><a>Envíos al SII</a><a>Certificado</a>
+</nav>
+<main>
+<div class="top"><h1>Facturas y boletas</h1><button class="btn ghost" style="margin-left:auto">Registrar pago</button><button class="btn">Emitir documento</button></div>
+<div class="filters"><span class="tab on">Todos</span><span class="tab">Facturas</span><span class="tab">Boletas</span><span class="tab">Notas de crédito</span></div>
+<div class="list m">
+<div class="it alert"><span>10:42</span><span>FAC 000004</span><span style="font-family:'Red Hat Text'">Distribuidora Sur Austral<div class="sub tag no">Rechazado · RUT receptor no autorizado</div></span><span class="r">$845.920</span></div>
+<div class="it sel"><span>10:31</span><span>FAC 000002</span><span style="font-family:'Red Hat Text'">Corporación Nacional del Cobre<div class="sub">Enviado al SII · pagada</div></span><span class="r">$1.130.500</span></div>
+<div class="it"><span>10:12</span><span>BOL 000214</span><span style="font-family:'Red Hat Text'">Consumidor final<div class="sub">Aceptado · pagada</div></span><span class="r">$19.980</span></div>
+<div class="it"><span>Ayer</span><span>Borrador</span><span style="font-family:'Red Hat Text'">Cencosud Retail S.A.<div class="sub">Sin folio aún</div></span><span class="r">$571.200</span></div>
+<div class="it"><span>15 oct</span><span>FAC 000001</span><span style="font-family:'Red Hat Text'">Cencosud Retail S.A.<div class="sub">Aceptado · por cobrar</div></span><span class="r">$2.963.100</span></div>
+<div class="it"><span>15 oct</span><span>BOL 000213</span><span style="font-family:'Red Hat Text'">Consumidor final<div class="sub">Aceptado · pagada</div></span><span class="r">$35.970</span></div>
+</div>
+</main>
+<aside>
+<div class="pass">
+<div class="hd"><div><div class="lab">Factura electrónica</div><div class="big m">N° 2</div></div><div class="r"><div class="lab">Estado SII</div><div class="val">Enviado</div></div></div>
+<div class="seg"><div><div class="lab">Emisor</div><div class="val">Feline Cloud Technologies</div><div class="sub m">76.123.456-0</div></div><div><div class="lab">Receptor</div><div class="val">Codelco</div><div class="sub m">61.704.000-K</div></div></div>
+<div class="seg m"><div><div class="lab">Fecha</div><div class="val">18-10-2026</div></div><div><div class="lab">Track ID</div><div class="val">5947557402</div></div></div>
+<div class="seg m"><div><div class="lab">Neto</div><div class="val">$950.000</div></div><div><div class="lab">IVA 19%</div><div class="val">$180.500</div></div><div><div class="lab">Total</div><div class="big">$1.130.500</div></div></div>
+<div class="code"></div>
+</div>
+<div class="acts"><button class="btn ghost">PDF</button><button class="btn ghost">XML</button><button class="btn ghost">Nota de crédito</button></div>
+</aside>
+</body></html>

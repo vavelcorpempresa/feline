@@ -1,0 +1,648 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T02:27:31.552Z",
+  "title": "Design System: Feline Facturación",
+  "extensions": {
+    "colorMeta": {
+      "void": {
+        "role": "neutral",
+        "displayName": "Void",
+        "canonical": "#0A0A0A",
+        "oklch": "oklch(14.5% 0.000 89.9)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#121316",
+        "oklch": "oklch(18.7% 0.006 271.1)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242527",
+          "#414245",
+          "#606165",
+          "#818286",
+          "#A3A5A9",
+          "#C8C9CC",
+          "#EDEEF1"
+        ]
+      },
+      "slate": {
+        "role": "neutral",
+        "displayName": "Slate",
+        "canonical": "#1E2026",
+        "oklch": "oklch(24.4% 0.012 270.9)",
+        "tonalRamp": [
+          "#0B0B0D",
+          "#242529",
+          "#404247",
+          "#5F6168",
+          "#7F828A",
+          "#A2A5AC",
+          "#C7C9D0",
+          "#EDEEF3"
+        ]
+      },
+      "fog-deep": {
+        "role": "neutral",
+        "displayName": "Deep Fog",
+        "canonical": "#2A2F39",
+        "oklch": "oklch(30.5% 0.019 264.2)",
+        "tonalRamp": [
+          "#0A0B0E",
+          "#22252B",
+          "#3E424B",
+          "#5C616C",
+          "#7C828E",
+          "#9FA5B1",
+          "#C4C9D4",
+          "#EBEFF6"
+        ]
+      },
+      "fog": {
+        "role": "neutral",
+        "displayName": "Fog",
+        "canonical": "#5A6472",
+        "oklch": "oklch(50.0% 0.026 256.8)",
+        "tonalRamp": [
+          "#090B0E",
+          "#20252D",
+          "#3B434D",
+          "#58626F",
+          "#798392",
+          "#9CA6B5",
+          "#C1CAD7",
+          "#E8EFF9"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Bone Text",
+        "canonical": "#ECEDEF",
+        "oklch": "oklch(94.6% 0.003 264.5)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#A4A5A7",
+          "#C8C9CB",
+          "#EEEEEF"
+        ]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Mist",
+        "canonical": "#A9AEB6",
+        "oklch": "oklch(74.9% 0.013 259.8)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232529",
+          "#3F4248",
+          "#5D6168",
+          "#7E838A",
+          "#A1A5AD",
+          "#C5C9D0",
+          "#ECEFF4"
+        ]
+      },
+      "sand": {
+        "role": "primary",
+        "displayName": "Sand",
+        "canonical": "#C7B9A6",
+        "oklch": "oklch(79.2% 0.031 75.6)",
+        "tonalRamp": [
+          "#0D0B07",
+          "#2A241B",
+          "#4A4033",
+          "#6B5F4F",
+          "#8D806E",
+          "#B0A391",
+          "#D3C7B8",
+          "#F6EDE2"
+        ]
+      },
+      "sand-strong": {
+        "role": "primary",
+        "displayName": "Sand Strong",
+        "canonical": "#DCCDB8",
+        "oklch": "oklch(85.5% 0.033 76.4)",
+        "tonalRamp": [
+          "#0E0B07",
+          "#2B241A",
+          "#4A4032",
+          "#6C5F4D",
+          "#8E806D",
+          "#B1A390",
+          "#D3C7B6",
+          "#F6EDE1"
+        ]
+      },
+      "state-accepted": {
+        "role": "state",
+        "displayName": "Accepted",
+        "canonical": "#6FCB95",
+        "oklch": "oklch(77.0% 0.119 156.4)",
+        "tonalRamp": [
+          "#000F05",
+          "#002F15",
+          "#00512B",
+          "#0E7445",
+          "#399764",
+          "#64BA88",
+          "#94DCB0",
+          "#CAFDDC"
+        ]
+      },
+      "state-sent": {
+        "role": "state",
+        "displayName": "Sent",
+        "canonical": "#7CC8DA",
+        "oklch": "oklch(79.0% 0.079 214.5)",
+        "tonalRamp": [
+          "#010E11",
+          "#002B33",
+          "#024B58",
+          "#1F6C7C",
+          "#428FA0",
+          "#6AB2C2",
+          "#99D5E3",
+          "#CDF7FF"
+        ]
+      },
+      "state-warning": {
+        "role": "state",
+        "displayName": "Warning",
+        "canonical": "#E7B95A",
+        "oklch": "oklch(80.9% 0.125 83.4)",
+        "tonalRamp": [
+          "#130900",
+          "#362000",
+          "#5C3B00",
+          "#815900",
+          "#A67A01",
+          "#C89E44",
+          "#E9C47B",
+          "#FFEBB8"
+        ]
+      },
+      "state-rejected": {
+        "role": "state",
+        "displayName": "Rejected",
+        "canonical": "#F28B66",
+        "oklch": "oklch(74.0% 0.136 40.3)",
+        "tonalRamp": [
+          "#190501",
+          "#441200",
+          "#712605",
+          "#9C411E",
+          "#C4623E",
+          "#E88765",
+          "#FFB192",
+          "#FFDEC7"
+        ]
+      },
+      "state-draft": {
+        "role": "state",
+        "displayName": "Draft",
+        "canonical": "#B3ADA6",
+        "oklch": "oklch(75.1% 0.012 71.9)",
+        "tonalRamp": [
+          "#0C0B09",
+          "#272521",
+          "#45413C",
+          "#65605A",
+          "#87817B",
+          "#AAA49D",
+          "#CDC8C2",
+          "#F1EEE9"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#FFFFFF",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "paper-ink": {
+        "role": "neutral",
+        "displayName": "Paper Ink",
+        "canonical": "#16181C",
+        "oklch": "oklch(20.9% 0.009 264.4)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242528",
+          "#404246",
+          "#5F6166",
+          "#808288",
+          "#A2A5AA",
+          "#C7C9CE",
+          "#EDEEF2"
+        ]
+      },
+      "paper-graphite": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "canonical": "#3F444B",
+        "oklch": "oklch(38.5% 0.014 256.8)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#222529",
+          "#3E4248",
+          "#5D6269",
+          "#7D838B",
+          "#A0A5AD",
+          "#C5CAD0",
+          "#EBEFF4"
+        ]
+      },
+      "paper-gray": {
+        "role": "neutral",
+        "displayName": "Paper Gray",
+        "canonical": "#5B6067",
+        "oklch": "oklch(48.7% 0.013 256.7)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#232529",
+          "#3E4248",
+          "#5D6268",
+          "#7D838A",
+          "#A0A5AD",
+          "#C5C9D0",
+          "#EBEFF3"
+        ]
+      },
+      "paper-rule": {
+        "role": "neutral",
+        "displayName": "Paper Rule",
+        "canonical": "#D9DCE0",
+        "oklch": "oklch(89.3% 0.006 255.5)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242527",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A2A5A9",
+          "#C7C9CC",
+          "#EDEFF1"
+        ]
+      },
+      "paper-rule-soft": {
+        "role": "neutral",
+        "displayName": "Soft Rule",
+        "canonical": "#ECEEF0",
+        "oklch": "oklch(94.8% 0.003 247.9)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#A3A5A7",
+          "#C8C9CB",
+          "#EDEEF0"
+        ]
+      },
+      "sii-red": {
+        "role": "tertiary",
+        "displayName": "SII Red",
+        "canonical": "#C8102E",
+        "oklch": "oklch(53.0% 0.207 22.3)",
+        "tonalRamp": [
+          "#1F0002",
+          "#530003",
+          "#86000F",
+          "#B80026",
+          "#E43845",
+          "#FF676A",
+          "#FF9996",
+          "#FFCECA"
+        ]
+      },
+      "feline-blue": {
+        "role": "incumbent",
+        "displayName": "Feline Blue",
+        "canonical": "#0062C4",
+        "oklch": "oklch(50.7% 0.172 255.8)",
+        "tonalRamp": [
+          "#000A20",
+          "#002256",
+          "#003E8B",
+          "#035EBC",
+          "#2F81E6",
+          "#5AA6FF",
+          "#8BCCFF",
+          "#C3F2FF"
+        ]
+      },
+      "feline-blue-dark": {
+        "role": "incumbent",
+        "displayName": "Feline Blue (dark mode)",
+        "canonical": "#0073E6",
+        "oklch": "oklch(56.9% 0.195 256.0)",
+        "tonalRamp": [
+          "#000A23",
+          "#00205C",
+          "#003C95",
+          "#005CC8",
+          "#1A7FF3",
+          "#4DA5FF",
+          "#82CBFF",
+          "#BDF2FF"
+        ]
+      },
+      "feline-navy": {
+        "role": "incumbent",
+        "displayName": "Feline Navy",
+        "canonical": "#001E3B",
+        "oklch": "oklch(23.2% 0.066 250.5)",
+        "tonalRamp": [
+          "#050C13",
+          "#152638",
+          "#2B445E",
+          "#456484",
+          "#6486A9",
+          "#88A9CC",
+          "#B0CCEC",
+          "#DCF1FF"
+        ]
+      },
+      "rocas-earth": {
+        "role": "incumbent",
+        "displayName": "Rocas Earth",
+        "canonical": "#7A5B3A",
+        "oklch": "oklch(49.5% 0.063 67.3)",
+        "tonalRamp": [
+          "#100A04",
+          "#312110",
+          "#553C22",
+          "#785B3B",
+          "#9C7B59",
+          "#BF9E7D",
+          "#E0C4A7",
+          "#FFEBD5"
+        ]
+      },
+      "rocas-sand": {
+        "role": "incumbent",
+        "displayName": "Rocas Sand",
+        "canonical": "#D8BB96",
+        "oklch": "oklch(80.8% 0.060 73.6)",
+        "tonalRamp": [
+          "#100A04",
+          "#302210",
+          "#523E23",
+          "#755C3C",
+          "#987D5A",
+          "#BBA07E",
+          "#DDC5A7",
+          "#FDECD6"
+        ]
+      },
+      "rocas-linen": {
+        "role": "incumbent",
+        "displayName": "Rocas Linen",
+        "canonical": "#F6F1EA",
+        "oklch": "oklch(96.0% 0.011 76.6)",
+        "tonalRamp": [
+          "#0C0B0A",
+          "#272522",
+          "#45413D",
+          "#65615B",
+          "#86827B",
+          "#A9A49E",
+          "#CCC8C3",
+          "#F1EEEA"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display-total": {
+        "displayName": "Display Total",
+        "purpose": "Document total in the stage scrim only."
+      },
+      "display-folio": {
+        "displayName": "Display Folio",
+        "purpose": "Uppercase document name in the stage scrim only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Queue title and empty-state heading."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Client name in the scrim."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Scene default; rows and amounts."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Filters, inputs, tally, position counter."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Rail action labels, dates."
+      },
+      "sheet-body": {
+        "displayName": "Sheet Body",
+        "purpose": "Printed document sheet text."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sheet-lift",
+        "value": "0 30px 60px -20px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.4)",
+        "purpose": "Only on the document sheet; removed in print."
+      }
+    ],
+    "motion": [
+      {
+        "name": "snap-enter",
+        "value": "220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Document-to-document vertical snap: translate ±36px + fade in from the travel direction."
+      },
+      {
+        "name": "snap-reduced",
+        "value": "160ms ease-out",
+        "purpose": "Opacity-only fade under prefers-reduced-motion."
+      },
+      {
+        "name": "state-change",
+        "value": "160ms ease-out",
+        "purpose": "Background/border/transform on buttons, tabs, rail circles, dots (rows 140ms)."
+      },
+      {
+        "name": "loading-shimmer",
+        "value": "1.4s linear infinite",
+        "purpose": "Queue placeholder rows; disabled under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "scene-medium",
+        "value": "@container (max-width: 1040px)",
+        "note": "Queue 312px; rail becomes a bar under the stage."
+      },
+      {
+        "name": "scene-narrow",
+        "value": "@container (max-width: 720px)",
+        "note": "Single column; fluid sheet; sticky horizontal rail."
+      }
+    ],
+    "scope": {
+      "newWorld": "Facturas y boletas view only (EscenaDocumentos, .esc* CSS block).",
+      "incumbent": "Ant Design 5 shell themed per brand (Feline Capital, Rocas del Sur): sidebar, header, other screens."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Sand primary action, e.g. Emitir; one per region.",
+      "html": "<div class=\"ds-esc\"><button class=\"ds-btn-primary\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 2 11 13\"/><path d=\"M22 2 15 22l-4-9-9-4z\"/></svg>Emitir</button></div>",
+      "css": ".ds-esc{--esc-vacio:#0A0A0A;--esc-tinta:#121316;--esc-pizarra:#1E2026;--esc-niebla-oscura:#2A2F39;--esc-niebla:#5A6472;--esc-texto:#ECEDEF;--esc-secundario:#A9AEB6;--esc-arena:#C7B9A6;--esc-arena-fuerte:#DCCDB8;--esc-ok:#6FCB95;--esc-enviado:#7CC8DA;--esc-aviso:#E7B95A;--esc-error:#F28B66;--esc-borrador:#B3ADA6;background:var(--esc-tinta);padding:20px;font-family:Inter,-apple-system,sans-serif;font-size:14px;color:var(--esc-texto)} .ds-btn-primary{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--esc-arena);background:var(--esc-arena);color:var(--esc-vacio);font:600 14px Inter,sans-serif;cursor:pointer;transition:background-color 160ms ease-out,border-color 160ms ease-out} .ds-btn-primary:hover{background:var(--esc-arena-fuerte);border-color:var(--esc-arena-fuerte)} .ds-btn-primary:focus-visible{outline:2px solid var(--esc-arena);outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined fog button for secondary actions on dark.",
+      "html": "<div class=\"ds-esc\"><button class=\"ds-btn-secondary\">Reintentar</button></div>",
+      "css": ".ds-esc{--esc-vacio:#0A0A0A;--esc-tinta:#121316;--esc-pizarra:#1E2026;--esc-niebla-oscura:#2A2F39;--esc-niebla:#5A6472;--esc-texto:#ECEDEF;--esc-secundario:#A9AEB6;--esc-arena:#C7B9A6;--esc-arena-fuerte:#DCCDB8;--esc-ok:#6FCB95;--esc-enviado:#7CC8DA;--esc-aviso:#E7B95A;--esc-error:#F28B66;--esc-borrador:#B3ADA6;background:var(--esc-tinta);padding:20px;font-family:Inter,-apple-system,sans-serif;color:var(--esc-texto)} .ds-btn-secondary{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--esc-niebla-oscura);background:transparent;color:var(--esc-texto);font:500 14px Inter,sans-serif;cursor:pointer;transition:background-color 160ms ease-out,border-color 160ms ease-out} .ds-btn-secondary:hover{background:var(--esc-pizarra);border-color:var(--esc-niebla)} .ds-btn-secondary:focus-visible{outline:2px solid var(--esc-arena);outline-offset:2px}"
+    },
+    {
+      "name": "Filter Tabs",
+      "kind": "chip",
+      "refersTo": "filter-tab",
+      "description": "Document-type tabs with counts above the queue.",
+      "html": "<div class=\"ds-esc\"><div class=\"ds-tabs\"><button class=\"ds-tab ds-tab-on\">Todos <span>3</span></button><button class=\"ds-tab\">Facturas <span>3</span></button><button class=\"ds-tab\">Boletas <span>0</span></button><button class=\"ds-tab\">Notas <span>0</span></button></div></div>",
+      "css": ".ds-esc{--esc-vacio:#0A0A0A;--esc-tinta:#121316;--esc-pizarra:#1E2026;--esc-niebla-oscura:#2A2F39;--esc-niebla:#5A6472;--esc-texto:#ECEDEF;--esc-secundario:#A9AEB6;--esc-arena:#C7B9A6;--esc-arena-fuerte:#DCCDB8;--esc-ok:#6FCB95;--esc-enviado:#7CC8DA;--esc-aviso:#E7B95A;--esc-error:#F28B66;--esc-borrador:#B3ADA6;background:var(--esc-tinta);padding:16px;font-family:Inter,-apple-system,sans-serif;width:328px} .ds-tabs{display:flex;gap:4px} .ds-tab{flex:1 1 auto;white-space:nowrap;padding:0 8px;height:32px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--esc-secundario);font:13px Inter,sans-serif;cursor:pointer;transition:background-color 160ms ease-out,color 160ms ease-out} .ds-tab span{margin-left:2px} .ds-tab:hover{color:var(--esc-texto);background:var(--esc-pizarra)} .ds-tab:focus-visible{outline:2px solid var(--esc-arena);outline-offset:2px} .ds-tab-on{background:var(--esc-pizarra);border-color:var(--esc-niebla-oscura);color:var(--esc-texto);font-weight:500}"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Void well with line icon; sand border on focus.",
+      "html": "<div class=\"ds-esc\"><label class=\"ds-search\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><input placeholder=\"RUT, folio o cliente\"></label></div>",
+      "css": ".ds-esc{--esc-vacio:#0A0A0A;--esc-tinta:#121316;--esc-pizarra:#1E2026;--esc-niebla-oscura:#2A2F39;--esc-niebla:#5A6472;--esc-texto:#ECEDEF;--esc-secundario:#A9AEB6;--esc-arena:#C7B9A6;--esc-arena-fuerte:#DCCDB8;--esc-ok:#6FCB95;--esc-enviado:#7CC8DA;--esc-aviso:#E7B95A;--esc-error:#F28B66;--esc-borrador:#B3ADA6;background:var(--esc-tinta);padding:16px;font-family:Inter,-apple-system,sans-serif;width:300px} .ds-search{display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;border-radius:8px;background:var(--esc-vacio);border:1px solid var(--esc-pizarra);color:var(--esc-secundario)} .ds-search:focus-within{border-color:var(--esc-arena)} .ds-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--esc-texto);font:13px Inter,sans-serif;caret-color:var(--esc-arena)} .ds-search input::placeholder{color:var(--esc-secundario);opacity:.8}"
+    },
+    {
+      "name": "Queue Row",
+      "kind": "card",
+      "refersTo": "queue-row",
+      "description": "Dense two-line document row; selected row turns its name sand.",
+      "html": "<div class=\"ds-esc\"><button class=\"ds-row ds-row-on\"><span class=\"ds-a\"><b>Factura 2</b><b class=\"ds-n\">$1.130.500</b></span><span class=\"ds-c\">CORPORACION NACIONAL DEL COBRE DE CHILE</span><span class=\"ds-a\"><span class=\"ds-st ds-aviso\"><i></i>Firmado, falta enviarlo</span><span class=\"ds-d\">18 oct</span></span></button><button class=\"ds-row\"><span class=\"ds-a\"><b>Factura 1</b><b class=\"ds-n\">$2.963.100</b></span><span class=\"ds-c\">CENCOSUD RETAIL S.A.</span><span class=\"ds-a\"><span class=\"ds-st ds-ok\"><i></i>Aceptado por el SII</span><span class=\"ds-d\">18 oct</span></span></button></div>",
+      "css": ".ds-esc{--esc-vacio:#0A0A0A;--esc-tinta:#121316;--esc-pizarra:#1E2026;--esc-niebla-oscura:#2A2F39;--esc-niebla:#5A6472;--esc-texto:#ECEDEF;--esc-secundario:#A9AEB6;--esc-arena:#C7B9A6;--esc-arena-fuerte:#DCCDB8;--esc-ok:#6FCB95;--esc-enviado:#7CC8DA;--esc-aviso:#E7B95A;--esc-error:#F28B66;--esc-borrador:#B3ADA6;background:var(--esc-tinta);padding:8px;font-family:Inter,-apple-system,sans-serif;font-size:14px;line-height:1.45;width:344px} .ds-row{display:grid;gap:2px;width:100%;text-align:left;padding:11px 12px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--esc-texto);font:inherit;cursor:pointer;transition:background-color 140ms ease-out} .ds-row:hover{background:var(--esc-pizarra)} .ds-row:focus-visible{outline:2px solid var(--esc-arena);outline-offset:2px} .ds-row-on{background:var(--esc-pizarra);border-color:var(--esc-niebla-oscura)} .ds-row-on .ds-a:first-child b:first-child{color:var(--esc-arena)} .ds-a{display:flex;justify-content:space-between;align-items:baseline;gap:10px} .ds-a b{font-weight:600} .ds-n{font-variant-numeric:tabular-nums} .ds-c{color:var(--esc-secundario);white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .ds-d{color:var(--esc-secundario);font-size:12px} .ds-st{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:500} .ds-st i{width:7px;height:7px;border-radius:50%;background:currentColor} .ds-aviso{color:var(--esc-aviso)} .ds-ok{color:var(--esc-ok)}"
+    },
+    {
+      "name": "Rail Action",
+      "kind": "button",
+      "refersTo": "rail-action-primary",
+      "description": "Circular labelled line-icon actions; the next valid step is sand, unavailable ones dim with a reason.",
+      "html": "<div class=\"ds-esc\"><button class=\"ds-act ds-act-main\"><span class=\"ds-ring\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 2 11 13\"/><path d=\"M22 2 15 22l-4-9-9-4z\"/></svg></span><span class=\"ds-lbl\">Enviar al SII</span></button><button class=\"ds-act\"><span class=\"ds-ring\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 0 11H11\"/></svg></span><span class=\"ds-lbl\">Nota de crédito</span></button><button class=\"ds-act\" aria-disabled=\"true\" title=\"Primero envíalo al SII\"><span class=\"ds-ring\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 12V7H5a2 2 0 0 1 0-4h14v4\"/><path d=\"M3 5v14a2 2 0 0 0 2 2h16v-5\"/><path d=\"M18 12a2 2 0 0 0 0 4h4v-4z\"/></svg></span><span class=\"ds-lbl\">Registrar pago</span></button></div>",
+      "css": ".ds-esc{--esc-vacio:#0A0A0A;--esc-tinta:#121316;--esc-pizarra:#1E2026;--esc-niebla-oscura:#2A2F39;--esc-niebla:#5A6472;--esc-texto:#ECEDEF;--esc-secundario:#A9AEB6;--esc-arena:#C7B9A6;--esc-arena-fuerte:#DCCDB8;--esc-ok:#6FCB95;--esc-enviado:#7CC8DA;--esc-aviso:#E7B95A;--esc-error:#F28B66;--esc-borrador:#B3ADA6;background:var(--esc-vacio);padding:16px 10px;font-family:Inter,-apple-system,sans-serif;display:flex;gap:6px} .ds-act{display:flex;flex-direction:column;align-items:center;gap:7px;padding:8px 4px;width:84px;border:0;background:transparent;color:var(--esc-texto);cursor:pointer} .ds-ring{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;border:1px solid var(--esc-niebla-oscura);transition:background-color 160ms ease-out,border-color 160ms ease-out,transform 160ms ease-out} .ds-act:hover .ds-ring{background:var(--esc-pizarra);border-color:var(--esc-niebla)} .ds-act:active .ds-ring{transform:scale(.94)} .ds-act:focus-visible{outline:2px solid var(--esc-arena);outline-offset:2px} .ds-lbl{font-size:12px;line-height:1.25;text-align:center} .ds-act-main .ds-ring{background:var(--esc-arena);border-color:var(--esc-arena);color:var(--esc-vacio)} .ds-act-main:hover .ds-ring{background:var(--esc-arena-fuerte);border-color:var(--esc-arena-fuerte)} .ds-act[aria-disabled=\"true\"]{cursor:not-allowed} .ds-act[aria-disabled=\"true\"] .ds-ring{opacity:.38} .ds-act[aria-disabled=\"true\"]:hover .ds-ring{background:transparent;border-color:var(--esc-niebla-oscura)} .ds-act[aria-disabled=\"true\"] .ds-lbl{color:var(--esc-secundario);opacity:.7}"
+    },
+    {
+      "name": "Document Sheet",
+      "kind": "custom",
+      "refersTo": "document-sheet",
+      "description": "The printed DTE: the only light surface, with the SII red box and the sheet lift shadow.",
+      "html": "<div class=\"ds-stage\"><article class=\"ds-sheet\"><header class=\"ds-h\"><div class=\"ds-em\"><strong>FELINE CLOUD TECHNOLOGIES SPA</strong><span>Desarrollo de software tributario</span><span>Av. Apoquindo 4501, Las Condes</span></div><div class=\"ds-box\"><span>R.U.T.: 76.123.456-0</span><strong>FACTURA ELECTRÓNICA</strong><span>N° 2</span></div></header><div class=\"ds-sii\">S.I.I. — LAS CONDES</div><dl class=\"ds-tot\"><div><dt>Neto</dt><dd>$950.000</dd></div><div><dt>IVA 19%</dt><dd>$180.500</dd></div><div class=\"ds-big\"><dt>Total</dt><dd>$1.130.500</dd></div></dl></article></div>",
+      "css": ".ds-stage{background:#0A0A0A;padding:32px} .ds-sheet{width:560px;background:#FFFFFF;color:#16181C;border-radius:3px;padding:34px 38px 28px;box-shadow:0 30px 60px -20px rgba(0,0,0,.7),0 2px 6px rgba(0,0,0,.4);font:12.5px/1.5 Inter,sans-serif} .ds-h{display:flex;justify-content:space-between;gap:20px} .ds-em{display:flex;flex-direction:column;color:#3F444B;max-width:260px} .ds-em strong{color:#16181C;font-size:15px;font-weight:700;margin-bottom:3px} .ds-box{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:214px;min-height:92px;padding:10px 12px;border:2px solid #C8102E;color:#C8102E;text-align:center;font-weight:600} .ds-box strong{font-size:13px} .ds-sii{margin:5px 0 0 auto;width:214px;text-align:center;font-size:11.5px;font-weight:600;color:#C8102E} .ds-tot{margin:28px 0 0 auto;width:220px;display:grid;gap:3px;font-variant-numeric:tabular-nums} .ds-tot div{display:flex;justify-content:space-between} .ds-tot dt{color:#5B6067} .ds-tot dd{margin:0} .ds-big{margin-top:5px;padding-top:7px;border-top:1px solid #16181C;font-size:15px;font-weight:700} .ds-big dt{color:#16181C}"
+    },
+    {
+      "name": "Stage Scrim",
+      "kind": "custom",
+      "refersTo": "display-total",
+      "description": "Bottom legend: folio and total in Antonio, SII state with reason.",
+      "html": "<div class=\"ds-scrim\"><div><p class=\"ds-folio\">Factura 2</p><p class=\"ds-cli\">CORPORACION NACIONAL DEL COBRE DE CHILE</p><p class=\"ds-sub\">61.704.000-K · 18 de octubre de 2026</p><p class=\"ds-state\"><i></i>Firmado, falta enviarlo</p><p class=\"ds-sub\">Está timbrado; envíalo al SII.</p></div><div class=\"ds-right\"><span class=\"ds-total\">$1.130.500</span><span class=\"ds-sub\">Por cobrar</span></div></div>",
+      "css": ".ds-scrim{--esc-vacio:#0A0A0A;--esc-tinta:#121316;--esc-pizarra:#1E2026;--esc-niebla-oscura:#2A2F39;--esc-niebla:#5A6472;--esc-texto:#ECEDEF;--esc-secundario:#A9AEB6;--esc-arena:#C7B9A6;--esc-arena-fuerte:#DCCDB8;--esc-ok:#6FCB95;--esc-enviado:#7CC8DA;--esc-aviso:#E7B95A;--esc-error:#F28B66;--esc-borrador:#B3ADA6;display:flex;justify-content:space-between;align-items:flex-end;gap:32px;padding:24px 32px;background:var(--esc-vacio);color:var(--esc-texto);font:14px/1.45 Inter,sans-serif;width:760px} .ds-scrim p{margin:0} .ds-folio{font:600 40px/1 Antonio,Inter,sans-serif;letter-spacing:.01em;text-transform:uppercase} .ds-cli{margin-top:10px!important;font-size:17px;font-weight:600} .ds-sub{color:var(--esc-secundario)} .ds-state{display:flex;align-items:center;gap:7px;margin-top:10px!important;font-size:15px;font-weight:600;color:var(--esc-aviso)} .ds-state i{width:9px;height:9px;border-radius:50%;background:currentColor} .ds-right{display:flex;flex-direction:column;align-items:flex-end} .ds-total{font:600 60px/1 Antonio,Inter,sans-serif;letter-spacing:-.005em;font-variant-numeric:tabular-nums}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Lit Sheet",
+    "overview": "One tax document at a time owns a dark stage. It is shown as the real printed sheet, with its actions stacked beside it. The room is void and ink: near-black planes separated by one-pixel slate rules, with no cards, no tiles and no pills. The only light surface in the room is the document itself, a white sheet with the SII red box. That makes the document the thing you read and everything else the place you read it from.\n\nDensity is high where the work is, in the queue: 360px of tight rows, each with name, amount, client, SII state and date. The stage is calm. The sheet scales to fit and sits under a bottom scrim that repeats what matters at a glance: the folio and total in a tall condensed face, plus the client and the SII state with its reason. Moving between documents is a vertical snap (wheel, J/K, arrows, or the position dots), a short rise or fall with a fade. It is the one signature motion.\n\nColour is rationed. Sand is the only warm accent, and it marks only selection and the primary action. State hues appear only on SII states and on the queue's \"pending\" tally. Everything else is fog grey on ink.",
+    "keyCharacteristics": [
+      "Dark void stage in both brands; the white document sheet is the only light surface.",
+      "Three columns: queue (360px), stage (fluid), action rail (104px).",
+      "Sand (`{colors.sand}`) is the single warm accent: primary action, selected row, active dot, focus ring, text selection.",
+      "State colour lives only on the SII state dot and its label.",
+      "Antonio is used only for the folio and the total; Inter is used for everything else, with tabular figures.",
+      "White single-stroke line icons (1.7 stroke, round caps) inside circular rail buttons.",
+      "Vertical snap between documents in 220ms, with a reduced-motion fade fallback."
+    ],
+    "rules": [
+      {
+        "name": "The One Warm Light Rule",
+        "body": "Sand is the only accent in the scene, and it means \"selected\" or \"do this next\". If something is sand, it is either chosen or the primary action.",
+        "section": "colors"
+      },
+      {
+        "name": "The State Owns Its Hue Rule",
+        "body": "Green, cyan, amber, red-orange and draft grey appear only on SII state (the dot, the state label, the pending tally). They are never used for decoration, buttons or amounts.",
+        "section": "colors"
+      },
+      {
+        "name": "The Only Light Surface Rule",
+        "body": "In the scene, the document sheet is the only light plane. Panels, rows and controls stay on void, ink and slate.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Figures Rule",
+        "body": "Antonio sets only the folio and the total. Never use it for headings, buttons or labels.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every amount, RUT and quantity uses tabular figures, so columns of CLP line up.",
+        "section": "typography"
+      },
+      {
+        "name": "The Paper Floats Rule",
+        "body": "Only the sheet casts a shadow. Controls, rows and rails are flat, and their state is shown with fill and border changes.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** keep the scene on void (`{colors.void}`) and ink (`{colors.ink}`) in both brands and both shell themes.",
+      "**Do** reserve sand for selection and the single next action. Its hover state is `{colors.sand-strong}`.",
+      "**Do** show SII state as a coloured dot plus a plain-Spanish label and, where it helps, a one-line reason (\"Está timbrado; envíalo al SII.\").",
+      "**Do** set every amount, RUT and quantity in tabular figures.",
+      "**Do** keep disabled rail actions visible, dimmed, and explained by a tooltip.",
+      "**Do** keep the 220ms vertical snap and its reduced-motion fade for any document-to-document change.",
+      "**Do** render the document as its printed sheet, with the SII red box, rather than as a summary card."
+    ],
+    "donts": [
+      "**Don't** put KPI tiles above a table of status pills in this view. The scene is a queue plus a stage.",
+      "**Don't** use state hues for decoration, buttons or amounts.",
+      "**Don't** use Antonio for anything other than the folio and the total.",
+      "**Don't** add shadows to controls or panels. Only the sheet lifts.",
+      "**Don't** bring the incumbent shell's blue or linen surfaces, or its 22px card radius, into the scene.",
+      "**Don't** show internal codes (DRAFT, NOT_PAID); use SII terms."
+    ]
+  }
+}

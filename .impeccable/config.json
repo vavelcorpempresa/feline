@@ -1,0 +1,77 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-11-02T01:30:35.409Z",
+        "reason": "Agent decision: Operate surface; the chosen world's quality-bar board specifies Inter for body/UI and the direction contract records it"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/model-pick.html"
+        ],
+        "createdAt": "2026-11-02T01:31:04.167Z",
+        "reason": "Agent decision: unchosen decision-round sketch, not shipped"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-flap.html"
+        ],
+        "createdAt": "2026-11-02T01:31:04.193Z",
+        "reason": "Agent decision: unchosen decision-round sketch, not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-11-02T02:28:14.343Z",
+        "reason": "Agent decision: unchosen decision-round sketch in its own world, not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/model-pick.html"
+        ],
+        "createdAt": "2026-11-02T02:28:14.372Z",
+        "reason": "Agent decision: unchosen decision-round sketch in its own world, not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-flap.html"
+        ],
+        "createdAt": "2026-11-02T02:28:14.401Z",
+        "reason": "Agent decision: unchosen decision-round sketch in its own world, not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-pass.html"
+        ],
+        "createdAt": "2026-11-02T02:28:14.429Z",
+        "reason": "Agent decision: unchosen decision-round sketch in its own world, not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-metro.html"
+        ],
+        "createdAt": "2026-11-02T02:28:14.458Z",
+        "reason": "Agent decision: unchosen decision-round sketch in its own world, not shipped"
+      }
+    ]
+  }
+}
