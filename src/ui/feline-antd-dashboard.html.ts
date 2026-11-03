@@ -125,6 +125,14 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
       -webkit-mask-position: center;
       mask-position: center;
     }
+    .ing { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: #0A0A0A; color: #ECEDEF; font-family: 'Inter', system-ui, sans-serif; }
+    .ing-caja { width: 100%; max-width: 380px; background: #121316; border: 1px solid #1E2026; border-radius: 12px; padding: 32px 28px 28px; box-shadow: 0 24px 48px -24px rgba(0,0,0,0.7); }
+    .ing-logo { display: block; width: 168px; height: 58px; color: #ECEDEF; margin-bottom: 22px; }
+    .ing-caja h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; color: #ECEDEF; }
+    .ing-texto { margin: 0 0 22px; color: #A9AEB6; font-size: 14px; }
+    .ing .ant-form-item-label > label { color: #A9AEB6; }
+    .ing-error { margin: -4px 0 14px; color: #F28B66; font-size: 13px; }
+    .ing-usuario { font-size: 13px; font-weight: 500; white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
     .rds-theme { font-family: 'DM Sans', system-ui, sans-serif; }
     .rds-theme h1.ant-typography, .rds-theme h2.ant-typography, .rds-theme h3.ant-typography,
     .rds-theme h4.ant-typography, .rds-theme .ant-card-head-title, .rds-theme .ant-modal-title,
@@ -1273,7 +1281,75 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
       );
     }
 
-    function FelineApp() {
+    // ========================================================================
+    // INICIO DE SESIÓN DEL PANEL
+    // ========================================================================
+    function PantallaIngreso({ onIngreso, marca }) {
+      const [enviando, setEnviando] = useState(false);
+      const [error, setError] = useState(null);
+      const ingresar = async (valores) => {
+        setEnviando(true);
+        setError(null);
+        try {
+          const res = await fetch('/api/v1/panel/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: valores.email, clave: valores.clave }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
+          onIngreso(data);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setEnviando(false);
+        }
+      };
+      return (
+        <div className="ing">
+          <main className="ing-caja">
+            <span
+              className={marca === 'rocas' ? 'rds-logo-rocas ing-logo' : 'rds-logo-feline ing-logo'}
+              role="img"
+              aria-label={marca === 'rocas' ? 'Rocas del Sur' : 'Feline Capital'}
+            />
+            <h1>Inicia sesión</h1>
+            <p className="ing-texto">Facturación electrónica y contabilidad de tus empresas.</p>
+            <Form layout="vertical" onFinish={ingresar} requiredMark={false} disabled={enviando}>
+              <Form.Item name="email" label="Correo" rules={[{ required: true, type: 'email', message: 'Ingresa tu correo' }]}>
+                <Input autoComplete="username" autoFocus size="large" />
+              </Form.Item>
+              <Form.Item name="clave" label="Contraseña" rules={[{ required: true, message: 'Ingresa tu contraseña' }]}>
+                <Input.Password autoComplete="current-password" size="large" />
+              </Form.Item>
+              {error && <p className="ing-error" role="alert">{error}</p>}
+              <Button type="primary" htmlType="submit" size="large" block loading={enviando}>
+                Entrar
+              </Button>
+            </Form>
+          </main>
+        </div>
+      );
+    }
+
+    function PanelConSesion() {
+      const [sesion, setSesion] = useState(undefined);
+      useEffect(() => {
+        fetch('/api/v1/panel/sesion')
+          .then((r) => (r.ok ? r.json() : null))
+          .then(setSesion)
+          .catch(() => setSesion(null));
+      }, []);
+      const salir = async () => {
+        await fetch('/api/v1/panel/logout', { method: 'POST' }).catch(() => undefined);
+        setSesion(null);
+      };
+      if (sesion === undefined) return <div className="ing" aria-busy="true" />;
+      if (!sesion) return <PantallaIngreso marca={'${isRocas ? 'rocas' : 'feline'}'} onIngreso={setSesion} />;
+      return <FelineApp sesion={sesion} onSalir={salir} onSesionExpirada={() => setSesion(null)} />;
+    }
+
+    function FelineApp({ sesion, onSalir, onSesionExpirada }) {
       const [designStyle, setDesignStyle] = useState('${defaultStyle}');
       const [themeMode, setThemeMode] = useState('light');
       const [borderRadius, setBorderRadius] = useState(12);
@@ -1298,7 +1374,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
         expenses: [],
         expenseSheets: [],
       });
-      const [activeTenantId, setActiveTenantId] = useState('tenant-feline-tech-01');
+      const [activeTenantId, setActiveTenantId] = useState(sesion.usuario.tenantIds[0]);
       const [periodoTributario, setPeriodoTributario] = useState('2026-10');
 
       // Modales interactivos
@@ -1343,6 +1419,10 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
           const res = await fetch(\`/api/v1/dashboard/state?periodo=\${periodo}\`, {
             headers: { 'x-tenant-id': selectedTenant },
           });
+          if (res.status === 401) {
+            onSesionExpirada();
+            return;
+          }
           if (!res.ok) throw new Error('El servidor respondió ' + res.status);
           const data = await res.json();
           setDashboardData(data);
@@ -1789,6 +1869,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
               rut: values.rut,
               roleKey: values.roleKey,
               tenantIds: values.tenantIds,
+              clave: values.clave,
             }),
           });
           const data = await res.json();
@@ -2458,6 +2539,10 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
                 </div>
 
                 <div className="rds-header-acciones">
+                  <Tooltip title={sesion.usuario.email}>
+                    <span className="ing-usuario">{sesion.usuario.name}</span>
+                  </Tooltip>
+                  <Button onClick={onSalir}>Cerrar sesión</Button>
                   <Tooltip title="Cargar certificado digital">
                   <Button
                     aria-label="Cargar certificado"
@@ -4923,6 +5008,15 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
                   <Input placeholder="camila.valenzuela@empresa.cl" />
                 </Form.Item>
 
+                <Form.Item
+                  name="clave"
+                  label="Contraseña inicial"
+                  extra="Mínimo 10 caracteres. Entrégala a la persona por un canal seguro."
+                  rules={[{ required: true, min: 10, message: 'Mínimo 10 caracteres' }]}
+                >
+                  <Input.Password autoComplete="new-password" />
+                </Form.Item>
+
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
@@ -5275,7 +5369,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<FelineApp />);
+    root.render(<PanelConSesion />);
   </script>
 </body>
 </html>`;

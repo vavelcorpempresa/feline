@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { buildFastifyApp } from '../src/server';
 import { felineSandboxStore } from '../src/services/feline-live-sandbox.service';
+import { ADMIN, iniciarSesion } from './ayudas-panel';
 
 // ============================================================================
 // SEGURIDAD DEL PANEL Y DE LA ADMINISTRACIÓN (auditoría ACF, grupo 1)
@@ -16,7 +17,8 @@ describe('Seguridad del panel y administración', () => {
     const app = buildFastifyApp({ siiModo: 'simulado' });
     const [a, b] = felineSandboxStore.tenants;
     expect(a && b).toBeTruthy();
-    const res = await app.inject({ method: 'GET', url: '/api/v1/dashboard/state', headers: { 'x-tenant-id': a.id } });
+    const cookie = await iniciarSesion(app, ADMIN);
+    const res = await app.inject({ method: 'GET', url: '/api/v1/dashboard/state', headers: { 'x-tenant-id': a.id, cookie } });
     const estado = res.json();
     expect(estado.moves.length).toBeGreaterThan(0);
     for (const coleccion of ['moves', 'partners', 'cafs', 'lotesEnviados']) {
@@ -37,8 +39,10 @@ describe('Seguridad del panel y administración', () => {
     await app.close();
 
     process.env.FELINE_DEMO = 'on';
+    process.env.FELINE_SESSION_SECRET = 'secreto-de-sesion-de-pruebas';
     const app2 = buildFastifyApp({ siiModo: 'real' });
-    const permitido = await app2.inject({ method: 'GET', url: '/api/v1/dashboard/state' });
+    const cookie = await iniciarSesion(app2, ADMIN);
+    const permitido = await app2.inject({ method: 'GET', url: '/api/v1/dashboard/state', headers: { cookie } });
     expect(permitido.statusCode).toBe(200);
     await app2.close();
   });

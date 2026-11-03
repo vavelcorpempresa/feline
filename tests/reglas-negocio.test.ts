@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { FelineLiveSandboxStore } from '../src/services/feline-live-sandbox.service';
 import { OdooAccountMoveService } from '../src/services/odoo-account-move.service';
 import { buildFastifyApp } from '../src/server';
+import { ADMIN, iniciarSesion } from './ayudas-panel';
 
 // ============================================================================
 // REGLAS DE NEGOCIO (auditoría ACF, grupo 2): notas de crédito, pagos,
@@ -79,14 +80,18 @@ describe('Reglas de negocio', () => {
   it('Un rango de folios de demostración no puede reutilizar folios ni ser inválido', async () => {
     const app = buildFastifyApp({ siiModo: 'simulado' });
     const tenantId = 'tenant-feline-tech-01';
+    const cookie = await iniciarSesion(app, ADMIN);
     const pedir = (body: unknown) =>
-      app.inject({ method: 'POST', url: '/api/v1/dashboard/cafs/generate', headers: { 'x-tenant-id': tenantId }, payload: body as any });
+      app.inject({ method: 'POST', url: '/api/v1/dashboard/cafs/generate', headers: { 'x-tenant-id': tenantId, cookie }, payload: body as any });
     expect((await pedir({ tipoDte: 33, desde: 10, hasta: 5 })).statusCode).toBe(400);
     expect((await pedir({ tipoDte: 33, desde: 'x', hasta: 5 })).statusCode).toBe(400);
     const repetido = await pedir({ tipoDte: 33, desde: 1, hasta: 100 });
     expect(repetido.statusCode).toBe(400);
     expect(repetido.json().error).toMatch(/ya fue usado/);
-    expect((await pedir({ tipoDte: 33, desde: 5000, hasta: 5100 })).statusCode).toBe(201);
+    const creado = await pedir({ tipoDte: 33, desde: 5000, hasta: 5100 });
+    expect(creado.statusCode).toBe(201);
+    // La llave privada del CAF (<RSASK>) nunca se devuelve
+    expect(creado.body).not.toMatch(/RSASK|PRIVATE KEY/);
     await app.close();
   });
 });

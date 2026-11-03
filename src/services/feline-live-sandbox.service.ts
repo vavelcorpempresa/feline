@@ -146,6 +146,7 @@ export interface UserDemoRecord {
   tenantIds: string[]; // Empresas a las que tiene acceso el usuario
   isActive: boolean;
   createdAt: string;
+  passwordHash?: string; // scrypt; sin él, el usuario de demostración usa FELINE_PANEL_CLAVE_DEMO
 }
 
 export interface PartnerDemoRecord {
@@ -848,8 +849,12 @@ export class FelineLiveSandboxStore {
     rut: string;
     roleKey: FelineRoleKey;
     tenantIds: string[];
+    passwordHash?: string;
   }): UserDemoRecord {
     const cleanRut = normalizeAndValidateRut(params.rut);
+    if (!FELINE_ROLE_PROFILES.some((r) => r.key === params.roleKey)) {
+      throw new Error('Rol de usuario no válido.');
+    }
     const cleanEmail = params.email.trim().toLowerCase();
     const existing = this.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (existing) {
@@ -865,6 +870,7 @@ export class FelineLiveSandboxStore {
       tenantIds: params.tenantIds?.length ? params.tenantIds : [this.tenants[0]?.id],
       isActive: true,
       createdAt: new Date().toISOString(),
+      passwordHash: params.passwordHash,
     };
 
     this.users.unshift(newUser);

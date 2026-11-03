@@ -4,6 +4,7 @@ import { z } from 'zod';
 import crypto from 'node:crypto';
 import { prismaBase } from './core/tenant-context';
 import { VERSION, puerto, urlPublica } from './config';
+import { hashClave, registrarAutenticacionPanel, usuarioPublico, validarClaveNueva, permisosDe } from './auth/panel-auth';
 import { CryptoVaultService } from './core/crypto-vault';
 import { CafTedService } from './services/caf-ted.service';
 import { XmlDsigSignerService } from './services/xmldsig-signer.service';
@@ -164,6 +165,8 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
   // bloqueados salvo que se habiliten explícitamente con FELINE_DEMO=on.
   // --------------------------------------------------------------------------
   const demoHabilitado = process.env.NODE_ENV !== 'production' || process.env.FELINE_DEMO === 'on';
+  // Inicio de sesión con roles: protege todas las rutas /api/v1/dashboard/*
+  registrarAutenticacionPanel(app, felineSandboxStore);
   app.addHook('onRequest', async (request, reply) => {
     if (!demoHabilitado && request.url.startsWith('/api/v1/dashboard/')) {
       return reply.code(403).send({
@@ -174,8 +177,12 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
   app.get('/api/v1/dashboard/state', async (request) => {
     const tenantId = String(request.headers['x-tenant-id'] || 'tenant-feline-tech-01');
     const periodo = String((request.query as any)?.periodo || '2026-10');
+    const usuario = request.usuarioPanel!;
+    const gestionaUsuarios = !!permisosDe(usuario)?.canManageUsers;
     return {
-      tenants: felineSandboxStore.tenants.map((t) => ({
+      sesion: { usuario: usuarioPublico(usuario), permisos: permisosDe(usuario) },
+      // Solo las empresas a las que el usuario tiene acceso
+      tenants: felineSandboxStore.tenants.filter((t) => usuario.tenantIds.includes(t.id)).map((t) => ({
         ...t,
         certificate: {
           subjectName: t.certificate.subjectName,
@@ -184,7 +191,10 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
         },
       })),
       // Solo los datos de la empresa consultada: nunca documentos, clientes ni usuarios de otra
-      users: felineSandboxStore.users.filter((u) => u.tenantIds.includes(tenantId)),
+      users: (gestionaUsuarios
+        ? felineSandboxStore.users.filter((u) => u.tenantIds.includes(tenantId))
+        : felineSandboxStore.users.filter((u) => u.id === usuario.id)
+      ).map(usuarioPublico),
       roleProfiles: FELINE_ROLE_PROFILES,
       partners: felineSandboxStore.partners.filter((p) => p.tenantId === tenantId),
       cafs: felineSandboxStore.cafs.filter((c) => c.tenantId === tenantId).map((c) => ({
@@ -225,7 +235,14 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
         rutEnvia: body.rutEnvia || body.rut,
         environment: body.environment || 'CERTIFICACION',
       });
-      return reply.code(201).send(newTenant);
+      // Quien crea la empresa queda con acceso a ella
+      request.usuarioPanel!.tenantIds.push(newTenant.id);
+      // Nunca devolver la llave privada del certificado: solo sus datos públicos
+      const { certificate, ...empresa } = newTenant;
+      return reply.code(201).send({
+        ...empresa,
+        certificate: { subjectName: certificate.subjectName, validFrom: certificate.validFrom, validTo: certificate.validTo },
+      });
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
@@ -239,9 +256,23 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
         rut: string;
         roleKey: FelineRoleKey;
         tenantIds: string[];
+        clave: string;
       };
-      const newUser = felineSandboxStore.createUser(body);
-      return reply.code(201).send(newUser);
+      // Solo puede dar acceso a empresas a las que él mismo tiene acceso
+      const propias = request.usuarioPanel!.tenantIds;
+      const tenantIds = (body.tenantIds?.length ? body.tenantIds : [String(request.headers['x-tenant-id'])]).filter(
+        (id) => propias.includes(id)
+      );
+      if (!tenantIds.length) throw new Error('Asigna al menos una empresa a la que tengas acceso.');
+      const newUser = felineSandboxStore.createUser({
+        name: body.name,
+        email: body.email,
+        rut: body.rut,
+        roleKey: body.roleKey,
+        tenantIds,
+        passwordHash: hashClave(validarClaveNueva(body.clave)),
+      });
+      return reply.code(201).send(usuarioPublico(newUser));
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
@@ -251,8 +282,18 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     try {
       const { userId } = request.params as { userId: string };
       const body = request.body as any;
-      const updated = felineSandboxStore.updateUser(userId, body);
-      return reply.send(updated);
+      const { passwordHash: _ignorada, ...cambios } = body ?? {};
+      if (cambios.tenantIds) {
+        const propias = request.usuarioPanel!.tenantIds;
+        if (!cambios.tenantIds.every((id: string) => propias.includes(id))) {
+          throw new Error('Solo puedes asignar empresas a las que tienes acceso.');
+        }
+      }
+      if (userId === request.usuarioPanel!.id && (cambios.isActive === false || (cambios.roleKey && cambios.roleKey !== 'ADMIN'))) {
+        throw new Error('No puedes desactivarte ni quitarte el rol de administrador a ti mismo.');
+      }
+      const updated = felineSandboxStore.updateUser(userId, cambios);
+      return reply.send(usuarioPublico(updated));
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
@@ -261,6 +302,7 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
   app.delete('/api/v1/dashboard/users/:userId', async (request, reply) => {
     try {
       const { userId } = request.params as { userId: string };
+      if (userId === request.usuarioPanel!.id) throw new Error('No puedes eliminar tu propio usuario.');
       felineSandboxStore.deleteUser(userId);
       return reply.send({ success: true, message: 'Usuario eliminado' });
     } catch (err: any) {
@@ -444,7 +486,9 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
         agotado: false,
       };
       felineSandboxStore.cafs.push(newCaf);
-      return reply.code(201).send(newCaf);
+      // El XML de autorización contiene la llave privada del CAF (<RSASK>): no se devuelve
+      const { xmlAutorizacion: _privado, ...cafPublico } = newCaf;
+      return reply.code(201).send(cafPublico);
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
