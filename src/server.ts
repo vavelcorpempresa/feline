@@ -1,7 +1,8 @@
-import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
-import { db, prismaBase, tenantAsyncStorage } from './core/tenant-context';
+import crypto from 'node:crypto';
+import { prismaBase } from './core/tenant-context';
 import { CryptoVaultService } from './core/crypto-vault';
 import { CafTedService } from './services/caf-ted.service';
 import { XmlDsigSignerService } from './services/xmldsig-signer.service';
@@ -32,6 +33,14 @@ import { crearFetchSiiSimulado } from './services/sii-simulado';
 // ============================================================================
 
 export type SiiModo = 'real' | 'simulado';
+
+/** Compara el token de administrador en tiempo constante. */
+function tokenAdminValido(header: string | undefined, esperado: string): boolean {
+  const recibido = (header ?? '').replace(/^Bearer\s+/i, '');
+  const a = crypto.createHash('sha256').update(recibido).digest();
+  const b = crypto.createHash('sha256').update(esperado).digest();
+  return recibido.length > 0 && crypto.timingSafeEqual(a, b);
+}
 
 export interface BuildAppOptions {
   /** Conexión al SII: 'real' (maullin/palena según el ambiente del tenant) o 'simulado' (solo desarrollo). */
@@ -148,21 +157,19 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     status: 'online',
   }));
 
-  // Hook de aislamiento Multitenant: propaga `x-tenant-id` en AsyncLocalStorage
-  app.addHook('onRequest', (request: FastifyRequest, _reply: FastifyReply, done) => {
-    const tenantIdHeader = request.headers['x-tenant-id'];
-    if (typeof tenantIdHeader === 'string' && tenantIdHeader.trim().length > 0) {
-      tenantAsyncStorage.run({ tenantId: tenantIdHeader.trim() }, () => {
-        done();
-      });
-    } else {
-      done();
-    }
-  });
-
   // --------------------------------------------------------------------------
   // ENDPOINTS INTERACTIVOS DEL DASHBOARD ANTD MULTIPURPOSE (SANDBOX EN VIVO)
+  // Son de demostración (datos en memoria, sin autenticación): en producción quedan
+  // bloqueados salvo que se habiliten explícitamente con FELINE_DEMO=on.
   // --------------------------------------------------------------------------
+  const demoHabilitado = process.env.NODE_ENV !== 'production' || process.env.FELINE_DEMO === 'on';
+  app.addHook('onRequest', async (request, reply) => {
+    if (!demoHabilitado && request.url.startsWith('/api/v1/dashboard/')) {
+      return reply.code(403).send({
+        error: 'El modo demostración del panel está deshabilitado en producción (FELINE_DEMO=on para habilitarlo).',
+      });
+    }
+  });
   app.get('/api/v1/dashboard/state', async (request) => {
     const tenantId = String(request.headers['x-tenant-id'] || 'tenant-feline-tech-01');
     const periodo = String((request.query as any)?.periodo || '2026-10');
@@ -175,10 +182,11 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
           validTo: t.certificate.validTo,
         },
       })),
-      users: felineSandboxStore.users,
+      // Solo los datos de la empresa consultada: nunca documentos, clientes ni usuarios de otra
+      users: felineSandboxStore.users.filter((u) => u.tenantIds.includes(tenantId)),
       roleProfiles: FELINE_ROLE_PROFILES,
-      partners: felineSandboxStore.partners,
-      cafs: felineSandboxStore.cafs.map((c) => ({
+      partners: felineSandboxStore.partners.filter((p) => p.tenantId === tenantId),
+      cafs: felineSandboxStore.cafs.filter((c) => c.tenantId === tenantId).map((c) => ({
         id: c.id,
         tenantId: c.tenantId,
         tipoDte: c.tipoDte,
@@ -189,8 +197,8 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
         fechaAutorizacion: c.fechaAutorizacion,
         agotado: c.agotado,
       })),
-      moves: felineSandboxStore.moves,
-      lotesEnviados: felineSandboxStore.lotesEnviados,
+      moves: felineSandboxStore.moves.filter((m) => m.tenantId === tenantId),
+      lotesEnviados: felineSandboxStore.lotesEnviados.filter((l) => l.tenantId === tenantId),
       documentTypes: ODOO_L10N_CL_DOCUMENT_TYPES,
       rcvF29: felineSandboxStore.getLibroCompraVentaAndF29(tenantId, periodo),
       accounting: felineSandboxStore.getAccountingReport(tenantId, `${periodo}-31`),
@@ -567,6 +575,14 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
   });
 
   app.post('/api/v1/tenants', async (request, reply) => {
+    // Operación de administración: exige `Authorization: Bearer <FELINE_ADMIN_TOKEN>`
+    const tokenAdmin = process.env.FELINE_ADMIN_TOKEN;
+    if (!tokenAdmin) {
+      return reply.code(503).send({ error: 'Alta de empresas por API deshabilitada: falta FELINE_ADMIN_TOKEN (usa npm run admin).' });
+    }
+    if (!tokenAdminValido(request.headers.authorization, tokenAdmin)) {
+      return reply.code(401).send({ error: 'Token de administrador inválido' });
+    }
     const body = createTenantSchema.parse(request.body);
     const tenant = await prismaBase.tenant.create({
       data: {
