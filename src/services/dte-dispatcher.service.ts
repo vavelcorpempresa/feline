@@ -134,33 +134,50 @@ export class DteDispatcherService {
 
     let enviados = 0;
     for (const { id, tenantId } of firmados) {
-      // Reserva atómica: otra instancia del despachador no envía el mismo documento
-      const claim = await this.prisma.documentoDTE.updateMany({
-        where: { id, estado: 'FIRMADO' },
-        data: { estado: 'EN_LOTE' },
-      });
-      if (claim.count === 0) continue;
-
-      try {
-        await this.orchestrator.enviarLoteDteAlSii(tenantId, [id], 'EN_LOTE');
-        enviados++;
-      } catch (err: any) {
-        // Falla de red o autenticación: vuelve a FIRMADO y espera antes de reintentar
-        this.registrarError('no se pudo enviar el documento ' + id, err);
-        await this.prisma.documentoDTE.update({
-          where: { id },
-          data: { estado: 'FIRMADO', glosaEstadoSii: GLOSA_REINTENTO + String(err?.message).slice(0, 400) },
-        });
-        continue;
-      }
-      // La primera consulta de estado espera `consultaCadaMs`: el SII tarda en procesar el envío
-      const doc = await this.prisma.documentoDTE.update({
-        where: { id },
-        data: { siiConsultadoAt: new Date() },
-      });
-      await this.webhooks.encolar(doc);
+      if (await this.enviarUno(id, tenantId)) enviados++;
     }
     return enviados;
+  }
+
+  /**
+   * Envía de inmediato un documento recién firmado (sin esperar al próximo ciclo).
+   * Devuelve true si el SII lo recibió; si falla, queda FIRMADO y el ciclo lo reintentará.
+   */
+  public async enviarAhora(documentoId: string): Promise<boolean> {
+    const doc = await this.prisma.documentoDTE.findUnique({
+      where: { id: documentoId },
+      select: { tenantId: true },
+    });
+    if (!doc) return false;
+    return this.enviarUno(documentoId, doc.tenantId);
+  }
+
+  private async enviarUno(id: string, tenantId: string): Promise<boolean> {
+    // Reserva atómica: ni otra instancia ni el envío inmediato mandan dos veces el mismo documento
+    const claim = await this.prisma.documentoDTE.updateMany({
+      where: { id, estado: 'FIRMADO' },
+      data: { estado: 'EN_LOTE' },
+    });
+    if (claim.count === 0) return false;
+
+    try {
+      await this.orchestrator.enviarLoteDteAlSii(tenantId, [id], 'EN_LOTE');
+    } catch (err: any) {
+      // Falla de red o autenticación: vuelve a FIRMADO y espera antes de reintentar
+      this.registrarError('no se pudo enviar el documento ' + id, err);
+      await this.prisma.documentoDTE.update({
+        where: { id },
+        data: { estado: 'FIRMADO', glosaEstadoSii: GLOSA_REINTENTO + String(err?.message).slice(0, 400) },
+      });
+      return false;
+    }
+    // La primera consulta de estado espera `consultaCadaMs`: el SII tarda en procesar el envío
+    const doc = await this.prisma.documentoDTE.update({
+      where: { id },
+      data: { siiConsultadoAt: new Date() },
+    });
+    await this.webhooks.encolar(doc);
+    return true;
   }
 
   private async consultarEnviados(): Promise<number> {

@@ -110,6 +110,13 @@ const ALIAS_REFERENCIA: Record<string, string> = {
 const CODIGOS_REFERENCIA_SII = /^(\d{1,3}|SET|HES|HEM|HEF|HMG|HMP|HMQ|HMS|HNR|HPA|HPI|HPU)$/;
 
 export class ApiDocumentosService {
+  /**
+   * Envío inmediato al SII tras emitir (lo conecta el servidor con el despachador).
+   * La respuesta espera hasta `esperaEnvioMs`; si el SII tarda más, el envío sigue en segundo plano.
+   */
+  public alEmitir: ((documentoId: string) => Promise<unknown>) | null = null;
+  public esperaEnvioMs = 10_000;
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly orchestrator: DteBillingOrchestratorService,
@@ -240,12 +247,28 @@ export class ApiDocumentosService {
         data: { documentoId: documento.id },
       });
 
-      return { documento, idempotente: false, advertencias };
+      // Al aceptar el documento se envía de inmediato al SII
+      const actual = await this.enviarDeInmediato(documento.id);
+      return { documento: actual ?? documento, idempotente: false, advertencias };
     } catch (err) {
       // Liberar la clave para que el cliente pueda reintentar la misma solicitud
       await this.prisma.apiIdempotencia.delete({ where: { id: reserva.id } }).catch(() => undefined);
       throw this.traducirError(err);
     }
+  }
+
+  private async enviarDeInmediato(documentoId: string) {
+    if (!this.alEmitir) return null;
+    const envio = this.alEmitir(documentoId).catch(() => undefined); // los errores ya quedan registrados
+    let temporizador: NodeJS.Timeout | undefined;
+    await Promise.race([
+      envio,
+      new Promise((r) => {
+        temporizador = setTimeout(r, this.esperaEnvioMs);
+      }),
+    ]);
+    clearTimeout(temporizador);
+    return this.prisma.documentoDTE.findUnique({ where: { id: documentoId } });
   }
 
   /** Busca un documento del Tenant de la clave (nunca de otra empresa). */

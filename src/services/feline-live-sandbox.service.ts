@@ -1671,100 +1671,145 @@ export class FelineLiveSandboxStore {
     };
   }
 
+  /**
+   * Envía al SII (simulado en este modo de demostración) los documentos de venta firmados que
+   * aún no se han enviado. Facturas y notas viajan en EnvioDTE; las boletas en EnvioBOLETA.
+   * Nunca reenvía documentos ya enviados o aceptados.
+   */
   public async sendBatchToSii(tenantId: string, moveIds?: string[]) {
     const tenant = this.tenants.find((t) => t.id === tenantId);
     if (!tenant) throw new Error('Tenant no encontrado.');
 
-    const targetMoves = this.moves.filter(
+    const pendientes = this.moves.filter(
       (m) =>
         m.tenantId === tenantId &&
         m.state === 'POSTED' &&
+        m.dteStatus === 'FIRMADO' &&
         (m.moveType === 'OUT_INVOICE' || m.moveType === 'OUT_REFUND') &&
         m.dteXmlFirmado &&
-        // Las boletas (39/41) no viajan en EnvioDTE: se envían en EnvioBOLETA por la API REST
-        !DteXmlBuilderService.isBoleta(m.documentTypeCode) &&
         (!moveIds || moveIds.includes(m.id))
     );
-
-    if (targetMoves.length === 0) {
-      throw new Error('No hay DTEs de venta firmados (distintos de boletas) disponibles para empaquetar en EnvioDTE.');
+    if (pendientes.length === 0) {
+      throw new Error('No hay documentos firmados pendientes de envío al SII.');
     }
 
-    const conteo = new Map<CodigoTipoDTE, number>();
-    for (const m of targetMoves) {
-      conteo.set(m.documentTypeCode, (conteo.get(m.documentTypeCode) ?? 0) + 1);
+    const grupos = [
+      { esBoleta: false, docs: pendientes.filter((m) => !DteXmlBuilderService.isBoleta(m.documentTypeCode)) },
+      { esBoleta: true, docs: pendientes.filter((m) => DteXmlBuilderService.isBoleta(m.documentTypeCode)) },
+    ].filter((g) => g.docs.length > 0);
+
+    const siiWs = new SiiWebServiceIntegration(FelineLiveSandboxStore.fetchSiiDemostracion());
+    const lotes = [];
+    for (const { esBoleta, docs } of grupos) {
+      const conteo = new Map<CodigoTipoDTE, number>();
+      for (const m of docs) conteo.set(m.documentTypeCode, (conteo.get(m.documentTypeCode) ?? 0) + 1);
+
+      const { setDocId, unsignedEnvioXml } = DteXmlBuilderService.buildEnvioLoteXml({
+        caratula: {
+          RutEmisor: tenant.rut,
+          RutEnvia: tenant.rutEnvia,
+          RutReceptor: '60803000-K',
+          FchResol: tenant.fchResol,
+          NroResol: tenant.nroResol,
+          TmstFirmaEnv: formatSiiTimestamp(new Date()),
+          SubTotDTE: Array.from(conteo.entries()).map(([TpoDTE, NroDTE]) => ({ TpoDTE, NroDTE })),
+        },
+        signedDtesXml: docs.map((m) => m.dteXmlFirmado!),
+        esBoleta,
+      });
+      const signedEnvioXml = XmlDsigSignerService.signEnvioLoteXml(unsignedEnvioXml, setDocId, tenant.certificate);
+      const datosEnvio = {
+        tenantId: tenant.id,
+        environment: tenant.environment,
+        rutSender: tenant.rutEnvia,
+        rutCompany: tenant.rut,
+        signedEnvioXml,
+        cert: tenant.certificate,
+      };
+      const resultado = esBoleta
+        ? await siiWs.uploadEnvioBoletaToSii(datosEnvio)
+        : await siiWs.uploadEnvioDteToSii(datosEnvio);
+      if (!resultado.success || !resultado.trackId) {
+        throw new Error('El SII no recibió el envío (estado ' + resultado.status + ').');
+      }
+
+      for (const m of docs) {
+        m.dteStatus = 'ACEPTADO';
+        m.trackId = resultado.trackId;
+        m.envioDteXml = signedEnvioXml;
+      }
+      const lote = {
+        id: crypto.randomUUID(),
+        tenantId: tenant.id,
+        trackId: resultado.trackId,
+        estadoSii: 'EPR - Envío Procesado (SIMULADO: no se transmitió al SII)',
+        glosaSii: (esBoleta ? 'Boletas' : 'DTEs') + ' aceptados: ' + docs.length + ' | Rechazados: 0 | Reparos: 0',
+        cantidadDtes: docs.length,
+        xmlEnvio: signedEnvioXml,
+        createdAt: new Date().toISOString(),
+      };
+      this.lotesEnviados.unshift(lote);
+      lotes.push(lote);
     }
 
-    const { setDocId, unsignedEnvioXml } = DteXmlBuilderService.buildEnvioLoteXml({
-      caratula: {
-        RutEmisor: tenant.rut,
-        RutEnvia: tenant.rutEnvia,
-        RutReceptor: '60803000-K',
-        FchResol: tenant.fchResol,
-        NroResol: tenant.nroResol,
-        TmstFirmaEnv: formatSiiTimestamp(new Date()),
-        SubTotDTE: Array.from(conteo.entries()).map(([TpoDTE, NroDTE]) => ({ TpoDTE, NroDTE })),
-      },
-      signedDtesXml: targetMoves.map((m) => m.dteXmlFirmado!),
-      esBoleta: false,
-    });
+    return {
+      ...lotes[0],
+      cantidadDtes: lotes.reduce((n, l) => n + l.cantidadDtes, 0),
+      lotes,
+    };
+  }
 
-    const signedEnvioXml = XmlDsigSignerService.signEnvioLoteXml(
-      unsignedEnvioXml,
-      setDocId,
-      tenant.certificate
-    );
+  /**
+   * Firma un borrador y lo envía de inmediato al SII. Si el envío falla, el documento queda
+   * emitido y firmado (pendiente de envío) y se informa el error sin perderlo.
+   */
+  public async emitirYEnviar(tenantId: string, moveId: string) {
+    const emitido = this.postMoveAndSignDte(tenantId, moveId);
+    return { documento: emitido, envio: await this.intentarEnvio(tenantId, emitido) };
+  }
 
-    const mockTrackId = String(Math.floor(1000000000 + Math.random() * 9000000000));
-    const mockFetch: typeof fetch = async (input) => {
+  /** Nota de crédito emitida y enviada de inmediato al SII. */
+  public async revertirYEnviar(params: Parameters<FelineLiveSandboxStore['reverseMoveWithCreditNote']>[0]) {
+    const nc = this.reverseMoveWithCreditNote(params);
+    return { documento: nc, envio: await this.intentarEnvio(params.tenantId, nc) };
+  }
+
+  private async intentarEnvio(tenantId: string, doc: MoveDemoRecord) {
+    // Documentos de compra (folios del proveedor) no se envían al SII
+    if (doc.moveType !== 'OUT_INVOICE' && doc.moveType !== 'OUT_REFUND') return { enviado: false, error: null };
+    try {
+      const lote = await this.sendBatchToSii(tenantId, [doc.id]);
+      return { enviado: true, trackId: lote.trackId, estadoSii: lote.estadoSii, error: null };
+    } catch (err: any) {
+      return { enviado: false, error: String(err?.message ?? err) };
+    }
+  }
+
+  /** SII simulado del modo de demostración: acepta todo envío (SOAP de DTE y REST de boletas). */
+  public static fetchSiiDemostracion(): typeof fetch {
+    let secuencia = 0;
+    const trackId = () => String(1000000000 + Math.floor(Math.random() * 8000000000) + ++secuencia);
+    const soap = (tag: string, cuerpo: string) =>
+      '<soapenv:Envelope><soapenv:Body><' + tag + '>&lt;SII:RESPUESTA&gt;&lt;SII:RESP_HDR&gt;' + cuerpo +
+      '&lt;/SII:RESP_HDR&gt;&lt;/SII:RESPUESTA&gt;</' + tag + '></soapenv:Body></soapenv:Envelope>';
+    const rest = (cuerpo: string) =>
+      '<SII:RESPUESTA xmlns:SII="http://www.sii.cl/XMLSchema"><SII:RESP_BODY>' + cuerpo +
+      '</SII:RESP_BODY><SII:RESP_HDR><ESTADO>00</ESTADO></SII:RESP_HDR></SII:RESPUESTA>';
+    return async (input, init) => {
       const url = String(input);
-      if (url.includes('CrSeed.jws')) {
-        return new Response(
-          `<soapenv:Envelope><soapenv:Body><getSeedReturn>&lt;SII:RESPUESTA&gt;&lt;SII:RESP_HDR&gt;&lt;ESTADO&gt;00&lt;/ESTADO&gt;&lt;/SII:RESP_HDR&gt;&lt;SII:RESP_BODY&gt;&lt;SEMILLA&gt;009876543210&lt;/SEMILLA&gt;&lt;/SII:RESP_BODY&gt;&lt;/SII:RESPUESTA&gt;</getSeedReturn></soapenv:Body></soapenv:Envelope>`,
-          { status: 200 }
-        );
+      const metodo = (init?.method ?? 'GET').toUpperCase();
+      if (url.includes('CrSeed.jws')) return new Response(soap('getSeedReturn', '&lt;ESTADO&gt;00&lt;/ESTADO&gt;&lt;SEMILLA&gt;009876543210&lt;/SEMILLA&gt;'));
+      if (url.includes('GetTokenFromSeed.jws')) return new Response(soap('getTokenReturn', '&lt;ESTADO&gt;00&lt;/ESTADO&gt;&lt;TOKEN&gt;DEMO' + Date.now() + '&lt;/TOKEN&gt;'));
+      if (url.includes('DTEUpload')) {
+        return new Response('<?xml version="1.0" encoding="ISO-8859-1"?><RECEPCIONDTE><STATUS>0</STATUS><TRACKID>' + trackId() + '</TRACKID><TIMESTAMP>' + new Date().toISOString() + '</TIMESTAMP></RECEPCIONDTE>');
       }
-      if (url.includes('GetTokenFromSeed.jws')) {
-        return new Response(
-          `<soapenv:Envelope><soapenv:Body><getTokenReturn>&lt;SII:RESPUESTA&gt;&lt;SII:RESP_HDR&gt;&lt;ESTADO&gt;00&lt;/ESTADO&gt;&lt;/SII:RESP_HDR&gt;&lt;SII:RESP_BODY&gt;&lt;TOKEN&gt;FELINE_SII_TOKEN_${Date.now()}&lt;/TOKEN&gt;&lt;/SII:RESP_BODY&gt;&lt;/SII:RESPUESTA&gt;</getTokenReturn></soapenv:Body></soapenv:Envelope>`,
-          { status: 200 }
-        );
+      if (url.endsWith('boleta.electronica.semilla')) return new Response(rest('<SEMILLA>009876543210</SEMILLA>'));
+      if (url.endsWith('boleta.electronica.token')) return new Response(rest('<TOKEN>DEMO' + Date.now() + '</TOKEN>'));
+      if (url.endsWith('boleta.electronica.envio') && metodo === 'POST') {
+        return Response.json({ trackid: Number(trackId()), estado: 'REC', fecha_recepcion: new Date().toISOString() });
       }
-      return new Response(
-        `<?xml version="1.0" encoding="ISO-8859-1"?><RECEPCIONDTE><STATUS>0</STATUS><TRACKID>${mockTrackId}</TRACKID><TIMESTAMP>${new Date().toISOString()}</TIMESTAMP></RECEPCIONDTE>`,
-        { status: 200 }
-      );
+      return new Response('SII de demostración: ruta no soportada (' + metodo + ' ' + url + ')', { status: 404 });
     };
-
-    const siiWs = new SiiWebServiceIntegration(mockFetch);
-    const uploadResult = await siiWs.uploadEnvioDteToSii({
-      tenantId: tenant.id,
-      environment: tenant.environment,
-      rutSender: tenant.rutEnvia,
-      rutCompany: tenant.rut,
-      signedEnvioXml,
-      cert: tenant.certificate,
-    });
-
-    for (const m of targetMoves) {
-      m.dteStatus = 'ACEPTADO';
-      m.trackId = uploadResult.trackId;
-      m.envioDteXml = signedEnvioXml;
-    }
-
-    const lote = {
-      id: crypto.randomUUID(),
-      tenantId: tenant.id,
-      trackId: uploadResult.trackId!,
-      estadoSii: 'EPR - Envío Procesado (SIMULADO: no se transmitió al SII)',
-      glosaSii: `DTEs Aceptados: ${targetMoves.length} | Rechazados: 0 | Reparos: 0`,
-      cantidadDtes: targetMoves.length,
-      xmlEnvio: signedEnvioXml,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.lotesEnviados.unshift(lote);
-    return lote;
   }
 
   public createManualEntry(params: Parameters<FelineLiveSandboxStore['createManualJournalEntry']>[0]) {

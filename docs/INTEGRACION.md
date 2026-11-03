@@ -64,7 +64,7 @@ const doc = await feline.emitir(
   },
   { idempotencyKey: `pedido_${pedido.id}_boleta` }
 );
-// doc → { id, folio, estado: 'FIRMADO', montoTotal, pdfUrl, xmlUrl, ... }
+// doc → { id, folio, estado: 'ENVIADO', trackId, montoTotal, pdfUrl, xmlUrl, ... }
 ```
 
 **Reglas importantes**
@@ -81,7 +81,7 @@ const doc = await feline.emitir(
 FIRMADO → ENVIADO (TrackID del SII) → ACEPTADO | ACEPTADO_CON_REPARO | RECHAZADO
 ```
 
-Feline envía el documento al SII en segundo plano y avisa **cada cambio de estado** con un `POST` al webhook del proyecto.
+Al aceptar el documento, Feline lo **envía de inmediato al SII**: la respuesta suele llegar ya con estado `ENVIADO` y su `trackId`. Si el SII tarda más de 10 segundos o falla, la respuesta llega con estado `FIRMADO`, el envío continúa o se reintenta en segundo plano y no se pierde el documento. Feline avisa **cada cambio de estado** con un `POST` al webhook del proyecto.
 
 ```ts
 // app/api/feline/webhook/route.ts (Next.js)
@@ -132,7 +132,7 @@ curl -X POST "$FELINE_API_URL/v1/documentos" \
 
 | Código | Significado | ¿Reintentar? |
 |---|---|---|
-| 202 | Emitido y firmado (el envío al SII sigue en segundo plano) | — |
+| 202 | Emitido y enviado al SII (`ENVIADO` + `trackId`); si el SII no respondió a tiempo, `FIRMADO` y se reintenta solo | — |
 | 200 | Ya existía con esta `Idempotency-Key` (`idempotente: true`) | — |
 | 400 | Datos inválidos (`detalles` indica el campo) | No: corrige los datos |
 | 401 | Clave inválida o revocada | No |

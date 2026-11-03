@@ -1682,13 +1682,28 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Error al publicar DTE');
-          notification.success({
-            message: \`Documento emitido con el folio \${Number(data.l10nLatamDocumentNumber)}\`,
-            description: 'Quedó firmado, timbrado y registrado en la contabilidad. Falta enviarlo al SII.',
-          });
+          avisarEnvio('Documento con folio ' + Number(data.l10nLatamDocumentNumber), data.envio);
           fetchState();
         } catch (err) {
           notification.error({ message: 'No se pudo emitir el documento', description: err.message });
+        }
+      };
+
+      // Aviso del resultado de emitir: siempre se intenta enviar al SII de inmediato
+      const avisarEnvio = (nombre, envio, extra) => {
+        if (envio && envio.enviado) {
+          notification.success({
+            message: nombre + ' emitido y enviado al SII',
+            description: 'Número de seguimiento ' + envio.trackId + '.' + (extra ? ' ' + extra : ''),
+          });
+        } else if (envio && envio.error) {
+          notification.warning({
+            message: nombre + ' emitido, pero no se pudo enviar al SII',
+            description: envio.error + ' Quedó firmado: reinténtalo con "Enviar al SII".',
+            duration: 8,
+          });
+        } else {
+          notification.success({ message: nombre + ' emitido', description: extra });
         }
       };
 
@@ -1707,10 +1722,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Error al emitir Nota de Crédito');
-          notification.success({
-            message: \`Nota de crédito \${Number(data.l10nLatamDocumentNumber)} emitida\`,
-            description: 'El documento original quedó revertido en la contabilidad.',
-          });
+          avisarEnvio('Nota de crédito ' + Number(data.l10nLatamDocumentNumber), data.envio, 'El documento original quedó revertido en la contabilidad.');
           setReverseModalMove(null);
           formReverse.resetFields();
           fetchState();
@@ -1820,11 +1832,8 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Error al emitir boleta');
 
+          // handlePostMove firma, envía al SII y avisa el resultado
           await handlePostMove(data.id);
-          notification.success({
-            message: 'Boleta Electrónica Emitida y Timbrada con Éxito',
-            description: 'Se asignó el Folio SII y se generó el Timbre Electrónico <TED> listo para entrega al cliente.',
-          });
           setNewBoletaModalOpen(false);
           formNewBoleta.resetFields();
         } catch (err) {

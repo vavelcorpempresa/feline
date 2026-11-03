@@ -104,6 +104,8 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     intervaloMs: Number(process.env.FELINE_DISPATCHER_INTERVAL_MS || 15_000),
   });
   app.decorate('dteDispatcher', dispatcher);
+  // Al aceptar un documento por la API se envía de inmediato al SII (el despachador reintenta si falla)
+  apiDocumentos.alEmitir = (id) => dispatcher.enviarAhora(id);
   app.addHook('onClose', async () => dispatcher.stop());
   registerApiV1(app, {
     prisma: prismaBase,
@@ -403,8 +405,9 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     try {
       const tenantId = String(request.headers['x-tenant-id'] || 'tenant-feline-tech-01');
       const { moveId } = request.params as { moveId: string };
-      const posted = felineSandboxStore.postMoveAndSignDte(tenantId, moveId);
-      return reply.send(posted);
+      // Firmar y enviar al SII en un solo paso; si el envío falla, queda firmado y pendiente
+      const { documento, envio } = await felineSandboxStore.emitirYEnviar(tenantId, moveId);
+      return reply.send({ ...documento, envio });
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }
@@ -415,13 +418,13 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
       const tenantId = String(request.headers['x-tenant-id'] || 'tenant-feline-tech-01');
       const { moveId } = request.params as { moveId: string };
       const body = request.body as { referenceDocCode: 1 | 2 | 3; reason: string };
-      const nc = felineSandboxStore.reverseMoveWithCreditNote({
+      const { documento, envio } = await felineSandboxStore.revertirYEnviar({
         tenantId,
         originMoveId: moveId,
         referenceDocCode: body.referenceDocCode,
         reason: body.reason,
       });
-      return reply.code(201).send(nc);
+      return reply.code(201).send({ ...documento, envio });
     } catch (err: any) {
       return reply.code(400).send({ error: err.message });
     }

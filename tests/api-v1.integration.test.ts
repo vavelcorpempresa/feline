@@ -140,7 +140,9 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
     const res = await emitir(payloadFugar(33), 'fugar_dte_factura_1');
     expect(res.statusCode).toBe(202);
     const body = res.json();
-    expect(body).toMatchObject({ tipoDte: 33, folio: 1, estado: 'FIRMADO', idempotente: false });
+    // Al aceptarlo se envía de inmediato al SII: responde ya enviado, con número de seguimiento
+    expect(body).toMatchObject({ tipoDte: 33, folio: 1, estado: 'ENVIADO', idempotente: false });
+    expect(body.trackId).toBeTruthy();
     expect(body.id).toMatch(/^[0-9a-f-]{36}$/);
     // Neto = 2×13437 + 3353 = 30227 → IVA 5743 → Total 35970
     expect(body).toMatchObject({ montoNeto: 30227, iva: 5743, montoTotal: 35970 });
@@ -266,9 +268,11 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
   });
 
   it('Ciclo SII completo: FIRMADO → ENVIADO → ACEPTADO con webhooks firmados que FUGAR acepta', async () => {
-    // Ciclo 1: envía todos los firmados (factura, boletas, notas) y avisa ENVIADO
+    // Envío inmediato: ningún documento emitido por la API queda esperando al despachador
+    expect(await prisma.documentoDTE.count({ where: { apiClientId: { not: null }, estado: 'FIRMADO' } })).toBe(0);
+    // Ciclo 1: no hay nada pendiente de envío; entrega los avisos ENVIADO
     const t1 = await app.dteDispatcher.tick();
-    expect((t1 as any).enviados).toBeGreaterThanOrEqual(12);
+    expect((t1 as any).enviados).toBe(0);
     const factura = await prisma.documentoDTE.findUniqueOrThrow({ where: { id: facturaId } });
     expect(factura.estado).toBe('ENVIADO');
     expect(factura.trackId).toBeTruthy();
@@ -448,6 +452,8 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
       const { DteDispatcherService } = await import('../src/services/dte-dispatcher.service');
       const res = await emitir(payloadFugar(33), 'acf_envio_fallido');
       const id = res.json().id;
+      // Se envió de inmediato; para esta prueba se vuelve a dejar firmado y pendiente
+      await prisma.documentoDTE.update({ where: { id }, data: { estado: 'FIRMADO', glosaEstadoSii: null, trackId: null } });
       let intentos = 0;
       const errores: string[] = [];
       const orquestadorQueFalla: any = {
@@ -534,6 +540,39 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
       const reintento = await emitir(payloadFugar(33), 'acf_firma_falla');
       expect(reintento.statusCode).toBe(202);
       expect(reintento.json().folio).toBe(consumido + 1);
+    });
+  });
+
+  describe('Envío inmediato al aceptar (T-ENVIO-INMEDIATO)', () => {
+    it('Si el SII falla al enviar, responde FIRMADO, no pierde el documento y queda para reintento', async () => {
+      const { DteBillingOrchestratorService } = await import('../src/services/dte-orchestrator.service');
+      const espia = vi
+        .spyOn(DteBillingOrchestratorService.prototype, 'enviarLoteDteAlSii')
+        .mockRejectedValueOnce(new Error('SII fuera de servicio'));
+      const res = await emitir(payloadFugar(33), 'inmediato_sii_caido');
+      espia.mockRestore();
+      expect(res.statusCode).toBe(202);
+      expect(res.json()).toMatchObject({ estado: 'FIRMADO' });
+      const doc = await prisma.documentoDTE.findUniqueOrThrow({ where: { id: res.json().id } });
+      expect(doc.estado).toBe('FIRMADO');
+      expect(doc.glosaEstadoSii).toMatch(/^Reintento de envío: SII fuera de servicio/);
+      // Pasada la espera, el despachador lo envía
+      await prisma.$executeRawUnsafe(
+        `UPDATE documentos_dte SET "updatedAt" = now() - interval '10 minutes' WHERE id = '${doc.id}'::uuid`
+      );
+      await app.dteDispatcher.tick();
+      expect((await prisma.documentoDTE.findUniqueOrThrow({ where: { id: doc.id } })).estado).toBe('ENVIADO');
+    });
+
+    it('Un reintento idempotente no reenvía el documento al SII', async () => {
+      const { DteBillingOrchestratorService } = await import('../src/services/dte-orchestrator.service');
+      const espia = vi.spyOn(DteBillingOrchestratorService.prototype, 'enviarLoteDteAlSii');
+      const primera = await emitir(payloadFugar(39), 'inmediato_idempotente');
+      const segunda = await emitir(payloadFugar(39), 'inmediato_idempotente');
+      expect(primera.json()).toMatchObject({ estado: 'ENVIADO', idempotente: false });
+      expect(segunda.json()).toMatchObject({ id: primera.json().id, estado: 'ENVIADO', idempotente: true });
+      expect(espia).toHaveBeenCalledTimes(1);
+      espia.mockRestore();
     });
   });
 });

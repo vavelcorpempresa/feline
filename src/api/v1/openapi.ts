@@ -154,7 +154,7 @@ export function buildOpenApiSpec(publicBaseUrl: string) {
           ],
           requestBody: { required: true, content: json(ref('DocumentoRequest')) },
           responses: {
-            '202': { description: 'Emitido y firmado; el envío al SII es asíncrono', content: json(ref('Documento')) },
+            '202': { description: 'Emitido y enviado de inmediato al SII (ENVIADO con trackId). Si el SII no responde en 10 s o falla, FIRMADO y se reintenta automáticamente.', content: json(ref('Documento')) },
             '200': { description: 'Ya emitido con esta Idempotency-Key (idempotente: true)', content: json(ref('Documento')) },
             '400': error('Payload inválido'),
             '401': error('Clave inválida'),

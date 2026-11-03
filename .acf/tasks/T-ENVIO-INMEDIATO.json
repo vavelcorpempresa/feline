@@ -1,0 +1,73 @@
+{
+  "project_id": "feline",
+  "task_id": "T-ENVIO-INMEDIATO",
+  "title": "Envío inmediato al SII al aceptar un documento",
+  "description": "Al aceptar (firmar y emitir) cualquier documento tributario, enviarlo de inmediato al SII, tanto en el panel (Facturas y Boletas, notas de crédito) como en la API v1 de los proyectos. Si el envío falla, el documento queda firmado y el despachador lo reintenta.",
+  "owner_agent": "claude",
+  "assigned_agent": "claude",
+  "priority": "high",
+  "dependencies": [],
+  "required_skills": [],
+  "allowed_files": [
+    ".acf/tasks/T-ENVIO-INMEDIATO.json",
+    "src/services/feline-live-sandbox.service.ts",
+    "src/services/api-documentos.service.ts",
+    "src/services/dte-dispatcher.service.ts",
+    "src/server.ts",
+    "src/ui/feline-antd-dashboard.html.ts",
+    "src/api/v1/openapi.ts",
+    "sdk/feline-client.ts",
+    "docs/INTEGRACION.md",
+    "tests/envio-inmediato.test.ts",
+    "tests/api-v1.integration.test.ts",
+    ".acf/evidence/T-ENVIO-INMEDIATO-vitest.log",
+    ".acf/evidence/T-ENVIO-INMEDIATO-sin-cambio.log"
+  ],
+  "rea_summary": {
+    "analysis": "Hoy emitir y enviar son dos pasos: el panel exige pulsar Enviar al SII y la API espera al despachador (cada 15 s). El usuario pide un solo paso. Riesgo: si el SII no responde, emitir no debe fallar ni perder el documento; además el envío por lote del panel reenviaba documentos ya aceptados y omitía las boletas.",
+    "understanding": "Todas las emisiones del panel pasan por POST /api/v1/dashboard/moves/:id/post y las notas de crédito por /reverse; la API emite en ApiDocumentosService.emitir. El despachador ya sabe reservar, enviar, registrar errores y reintentar con espera.",
+    "decisions": "Panel: tras firmar se envía en el mismo pedido (facturas y notas en EnvioDTE, boletas en EnvioBOLETA) y solo se envían documentos FIRMADO. API: tras firmar se envía de inmediato reutilizando el despachador; la respuesta espera hasta 10 s y, si el SII tarda o falla, responde FIRMADO y el despachador reintenta. Las respuestas idempotentes no reenvían.",
+    "actions": [
+      "Panel: emitirYEnviar y revertirYEnviar firman y envían en el mismo pedido; sendBatchToSii solo envía FIRMADO y separa EnvioDTE/EnvioBOLETA",
+      "API: ApiDocumentosService.alEmitir conectado a DteDispatcherService.enviarAhora (reserva atómica, reintento con espera, webhook); respuesta espera hasta 10 s",
+      "Panel: avisos 'emitido y enviado al SII' con número de seguimiento, o advertencia si quedó pendiente",
+      "Documentación: INTEGRACION.md y OpenAPI actualizados"
+    ],
+    "evidence": [
+      "npx vitest run (TEST_DATABASE_URL de pruebas): 85/85, exit 0",
+      "Sin el cambio (git stash de src): 12 pruebas nuevas o actualizadas fallan, exit 1",
+      "npm run typecheck y npm run build: exit 0",
+      "Navegador (puerto 3015): Firmar y emitir sobre un borrador -> 'Documento con folio 3 emitido y enviado al SII', estado Aceptado por el SII con seguimiento"
+    ]
+  },
+  "acceptance_criteria": [
+    "Panel: al firmar una factura, boleta o nota de crédito, el documento queda enviado (trackId) sin pulsar Enviar al SII",
+    "Panel: Enviar al SII solo envía documentos firmados pendientes; nunca reenvía aceptados",
+    "Panel: las boletas se envían en EnvioBOLETA",
+    "API: POST /v1/documentos responde con estado ENVIADO y trackId cuando el SII responde a tiempo",
+    "API: si el envío falla, responde FIRMADO, el documento no se pierde y el despachador lo reintenta",
+    "API: un reintento idempotente no reenvía el documento",
+    "Pruebas, chequeo de tipos y build sin errores"
+  ],
+  "status": "DONE",
+  "test_requirements": [
+    "unit",
+    "integration"
+  ],
+  "evidence": [
+    {
+      "id": "unit",
+      "command": "npx vitest run tests/envio-inmediato.test.ts",
+      "result": "passed",
+      "artifact": ".acf/evidence/T-ENVIO-INMEDIATO-vitest.log"
+    },
+    {
+      "id": "integration",
+      "command": "TEST_DATABASE_URL=<postgres de pruebas> npx vitest run",
+      "result": "passed",
+      "artifact": ".acf/evidence/T-ENVIO-INMEDIATO-vitest.log"
+    }
+  ],
+  "blockers": [],
+  "next_action": "Integrado en main"
+}
