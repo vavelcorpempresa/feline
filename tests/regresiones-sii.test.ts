@@ -357,10 +357,15 @@ describe('Regresiones SII detectadas en auditoría', () => {
   });
   describe('API REST', () => {
     it('Datos inválidos al crear empresa responden 400 (no 500)', async () => {
+      // El alta de empresas exige token de administrador (auditoría ACF, grupo 1)
+      const tokenPrevio = process.env.FELINE_ADMIN_TOKEN;
+      process.env.FELINE_ADMIN_TOKEN = 'token-de-prueba';
+      const headers = { authorization: 'Bearer token-de-prueba' };
       const app = buildFastifyApp();
       const res = await app.inject({
         method: 'POST',
         url: '/api/v1/tenants',
+        headers,
         payload: { rut: '76123456-0' },
       });
       expect(res.statusCode).toBe(400);
@@ -368,6 +373,7 @@ describe('Regresiones SII detectadas en auditoría', () => {
       const badRut = await app.inject({
         method: 'POST',
         url: '/api/v1/tenants',
+        headers,
         payload: {
           rut: '76123456-9', razonSocial: 'EMPRESA', giro: 'GIRO', acteco: [620100],
           direccionOrigen: 'DIR', comunaOrigen: 'STGO', ciudadOrigen: 'STGO',
@@ -377,6 +383,8 @@ describe('Regresiones SII detectadas en auditoría', () => {
       expect(badRut.statusCode).toBe(400);
       expect(badRut.json().error).toMatch(/Dígito verificador/);
       await app.close();
+      if (tokenPrevio === undefined) delete process.env.FELINE_ADMIN_TOKEN;
+      else process.env.FELINE_ADMIN_TOKEN = tokenPrevio;
     });
   });
 });
