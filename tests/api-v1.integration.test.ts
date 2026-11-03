@@ -427,4 +427,68 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
       await expect(caido.empresa()).rejects.toMatchObject({ status: 0, reintentable: true });
     });
   });
+
+  describe('Despachador SII: recuperación, reintentos y registro de errores (auditoría ACF, grupo 3)', () => {
+    const atrasar = (id: string, minutos: number) =>
+      prisma.$executeRawUnsafe(
+        `UPDATE documentos_dte SET "updatedAt" = now() - interval '${minutos} minutes' WHERE id = '${id}'::uuid`
+      );
+
+    it('Recupera un documento que quedó en EN_LOTE por un envío interrumpido', async () => {
+      const res = await emitir(payloadFugar(33), 'acf_en_lote_atascado');
+      const id = res.json().id;
+      await prisma.documentoDTE.update({ where: { id }, data: { estado: 'EN_LOTE' } });
+      await atrasar(id, 20);
+      const r: any = await app.dteDispatcher.tick();
+      expect(r.recuperados).toBeGreaterThanOrEqual(1);
+      expect((await prisma.documentoDTE.findUniqueOrThrow({ where: { id } })).estado).toBe('ENVIADO');
+    });
+
+    it('Un envío fallido espera antes de reintentar y deja registro del error', async () => {
+      const { DteDispatcherService } = await import('../src/services/dte-dispatcher.service');
+      const res = await emitir(payloadFugar(33), 'acf_envio_fallido');
+      const id = res.json().id;
+      let intentos = 0;
+      const errores: string[] = [];
+      const orquestadorQueFalla: any = {
+        enviarLoteDteAlSii: async () => {
+          intentos++;
+          throw new Error('SII no responde');
+        },
+      };
+      const sinWebhooks: any = { encolar: async () => null, entregarPendientes: async () => ({ entregados: 0, fallidos: 0 }) };
+      const despachador = new DteDispatcherService(prisma, orquestadorQueFalla, {} as any, {} as any, sinWebhooks, {
+        lote: 100,
+        registrarError: (m) => errores.push(m),
+      });
+      // Solo este documento queda pendiente de envío
+      await prisma.documentoDTE.updateMany({ where: { estado: 'FIRMADO', NOT: { id } }, data: { estado: 'ACEPTADO' } });
+
+      await despachador.tick();
+      expect(intentos).toBe(1);
+      const tras1 = await prisma.documentoDTE.findUniqueOrThrow({ where: { id } });
+      expect(tras1.estado).toBe('FIRMADO');
+      expect(tras1.glosaEstadoSii).toMatch(/^Reintento de envío: SII no responde/);
+      expect(errores.some((e) => e.includes(id))).toBe(true);
+
+      await despachador.tick();
+      expect(intentos).toBe(1); // dentro de la espera: no se reintenta
+
+      await atrasar(id, 10);
+      await despachador.tick();
+      expect(intentos).toBe(2); // pasada la espera: se reintenta
+    });
+
+    it('Si el ciclo completo falla, el error queda registrado', async () => {
+      const { DteDispatcherService } = await import('../src/services/dte-dispatcher.service');
+      const errores: string[] = [];
+      const prismaCaido: any = { documentoDTE: { updateMany: async () => { throw new Error('sin base de datos'); } } };
+      const despachador = new DteDispatcherService(prismaCaido, {} as any, {} as any, {} as any, {} as any, {
+        registrarError: (m) => errores.push(m),
+      });
+      const r: any = await despachador.tick();
+      expect(r.omitido).toBe(true);
+      expect(errores).toEqual(['el ciclo falló']);
+    });
+  });
 });

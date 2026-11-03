@@ -39,14 +39,24 @@ export function estadoFinalDesdeSii(r: {
 export interface DispatcherOptions {
   intervaloMs?: number;
   consultaCadaMs?: number; // Tiempo mínimo entre consultas de estado de un mismo documento
+  reintentoCadaMs?: number; // Espera antes de reintentar un envío que falló
+  enLoteMaxMs?: number; // Tras este tiempo en EN_LOTE se considera interrumpido y se recupera
   lote?: number;
+  /** Registro de errores; por defecto console.error. */
+  registrarError?: (mensaje: string, error: unknown) => void;
 }
+
+/** Prefijo de la glosa de un envío fallido: marca el documento para esperar antes de reintentar. */
+export const GLOSA_REINTENTO = 'Reintento de envío: ';
 
 export class DteDispatcherService {
   private timer: NodeJS.Timeout | null = null;
   private enCurso = false;
   private readonly consultaCadaMs: number;
+  private readonly reintentoCadaMs: number;
+  private readonly enLoteMaxMs: number;
   private readonly lote: number;
+  private readonly registrarError: (mensaje: string, error: unknown) => void;
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -57,7 +67,10 @@ export class DteDispatcherService {
     private readonly opciones: DispatcherOptions = {}
   ) {
     this.consultaCadaMs = opciones.consultaCadaMs ?? 60_000;
+    this.reintentoCadaMs = opciones.reintentoCadaMs ?? 5 * 60_000;
+    this.enLoteMaxMs = opciones.enLoteMaxMs ?? 10 * 60_000;
     this.lote = opciones.lote ?? 20;
+    this.registrarError = opciones.registrarError ?? ((m, e) => console.error('[Despachador SII] ' + m, e));
   }
 
   public start() {
@@ -76,21 +89,44 @@ export class DteDispatcherService {
     if (this.enCurso) return { omitido: true };
     this.enCurso = true;
     try {
+      const recuperados = await this.recuperarInterrumpidos();
       const enviados = await this.enviarFirmados();
       const consultados = await this.consultarEnviados();
       const webhooks = await this.webhooks.entregarPendientes();
-      return { enviados, consultados, webhooks };
+      return { recuperados, enviados, consultados, webhooks };
     } catch (err: any) {
-      // Si la base de datos PostgreSQL no está disponible en desarrollo/sandbox, no tumbar el servidor
+      // No tumbar el servidor (por ejemplo, sin base de datos en desarrollo), pero dejar registro
+      this.registrarError('el ciclo falló', err);
       return { error: err.message, omitido: true };
     } finally {
       this.enCurso = false;
     }
   }
 
+  /**
+   * Un documento queda EN_LOTE solo mientras se envía. Si sigue así pasado `enLoteMaxMs`,
+   * el proceso se interrumpió entre la reserva y el envío: vuelve a FIRMADO para reenviarlo.
+   */
+  private async recuperarInterrumpidos(): Promise<number> {
+    const { count } = await this.prisma.documentoDTE.updateMany({
+      where: { estado: 'EN_LOTE', updatedAt: { lte: new Date(Date.now() - this.enLoteMaxMs) } },
+      data: { estado: 'FIRMADO', glosaEstadoSii: 'Recuperado: el envío anterior se interrumpió' },
+    });
+    return count;
+  }
+
   private async enviarFirmados(): Promise<number> {
     const firmados = await this.prisma.documentoDTE.findMany({
-      where: { estado: 'FIRMADO', apiClientId: { not: null } },
+      where: {
+        estado: 'FIRMADO',
+        apiClientId: { not: null },
+        // Un envío que falló espera `reintentoCadaMs` antes de volver a intentarse
+        OR: [
+          { glosaEstadoSii: null },
+          { NOT: { glosaEstadoSii: { startsWith: GLOSA_REINTENTO } } },
+          { updatedAt: { lte: new Date(Date.now() - this.reintentoCadaMs) } },
+        ],
+      },
       orderBy: { createdAt: 'asc' },
       take: this.lote,
       select: { id: true, tenantId: true },
@@ -109,10 +145,11 @@ export class DteDispatcherService {
         await this.orchestrator.enviarLoteDteAlSii(tenantId, [id], 'EN_LOTE');
         enviados++;
       } catch (err: any) {
-        // Falla de red o autenticación: vuelve a FIRMADO para reintentar en el próximo ciclo
+        // Falla de red o autenticación: vuelve a FIRMADO y espera antes de reintentar
+        this.registrarError('no se pudo enviar el documento ' + id, err);
         await this.prisma.documentoDTE.update({
           where: { id },
-          data: { estado: 'FIRMADO', glosaEstadoSii: `Reintento de envío: ${String(err?.message).slice(0, 400)}` },
+          data: { estado: 'FIRMADO', glosaEstadoSii: GLOSA_REINTENTO + String(err?.message).slice(0, 400) },
         });
         continue;
       }
@@ -187,6 +224,7 @@ export class DteDispatcherService {
           await this.webhooks.encolar(actualizado);
         }
       } catch (err: any) {
+        this.registrarError('no se pudo consultar el estado del documento ' + doc.id, err);
         await this.prisma.documentoDTE.update({
           where: { id: doc.id },
           data: {
