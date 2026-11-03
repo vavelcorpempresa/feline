@@ -146,6 +146,7 @@ model Tenant {
   asientos        AccountMove[]
   pagos           AccountPayment[]
   apiClients      ApiClient[]
+  foliosSinUso    FolioSinUso[]
 
   @@index([rut])
   @@map("tenants")
@@ -547,4 +548,22 @@ model WebhookEvento {
 
   @@index([entregadoAt, proximoIntento])
   @@map("webhook_eventos")
+}
+
+/// 17. FOLIOS CONSUMIDOS SIN DOCUMENTO (deben anularse ante el SII)
+/// Se registran cuando la emisión falla después de asignar el folio (firma, guardado, etc.).
+model FolioSinUso {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  tipoDte    Int
+  folio      Int
+  motivo     String    @db.Text
+  anuladoAt  DateTime?                       // Cuándo se informó la anulación al SII
+  createdAt  DateTime  @default(now())
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, tipoDte, folio])
+  @@index([tenantId, anuladoAt])
+  @@map("folios_sin_uso")
 }

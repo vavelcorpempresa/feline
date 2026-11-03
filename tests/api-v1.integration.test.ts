@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
@@ -489,6 +489,51 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
       const r: any = await despachador.tick();
       expect(r.omitido).toBe(true);
       expect(errores).toEqual(['el ciclo falló']);
+    });
+  });
+
+  describe('Folios consumidos sin documento (mejora: folios sin uso)', () => {
+    const folioActual = async (tipoDte: number) => {
+      const tenant = await prisma.tenant.findUniqueOrThrow({ where: { rut: '76192083-9' } });
+      const caf = await prisma.cafFolio.findFirstOrThrow({ where: { tenantId: tenant.id, tipoDte, activo: true, agotado: false } });
+      return caf.folioActual;
+    };
+
+    it('Un error de datos se detecta antes de asignar folio: no se consume ninguno', async () => {
+      const antes = await folioActual(61);
+      const res = await emitir(payloadFugar(61, { referencias: [] }), 'acf_nc_sin_referencia');
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error).toMatch(/Referencia/);
+      expect(await folioActual(61)).toBe(antes);
+    });
+
+    it('Si la firma falla después de asignar el folio, el folio queda registrado para anularlo', async () => {
+      const { XmlDsigSignerService } = await import('../src/services/xmldsig-signer.service');
+      const espia = vi.spyOn(XmlDsigSignerService, 'signDteXml').mockImplementationOnce(() => {
+        throw new Error('Certificado ilegible al firmar');
+      });
+      const antes = await folioActual(33);
+      const res = await emitir(payloadFugar(33), 'acf_firma_falla');
+      espia.mockRestore();
+      expect(res.statusCode).toBe(500);
+      const consumido = antes + 1;
+      expect(await folioActual(33)).toBe(consumido);
+
+      const registro = await prisma.folioSinUso.findFirstOrThrow({ where: { tipoDte: 33, folio: consumido } });
+      expect(registro.motivo).toMatch(/Certificado ilegible/);
+      expect(registro.anuladoAt).toBeNull();
+
+      // La empresa lo ve en /v1/empresa hasta que se marca como anulado ante el SII
+      const empresa = await app.inject({ method: 'GET', url: '/v1/empresa', headers: auth() });
+      expect(empresa.json().foliosPorAnular).toContainEqual({ tipoDte: 33, folio: consumido });
+      expect(await admin.marcarFoliosAnulados('76192083-9', 33, [consumido])).toBe(1);
+      const despues = await app.inject({ method: 'GET', url: '/v1/empresa', headers: auth() });
+      expect(despues.json().foliosPorAnular).not.toContainEqual({ tipoDte: 33, folio: consumido });
+
+      // La misma solicitud puede reintentarse: emite con el folio siguiente
+      const reintento = await emitir(payloadFugar(33), 'acf_firma_falla');
+      expect(reintento.statusCode).toBe(202);
+      expect(reintento.json().folio).toBe(consumido + 1);
     });
   });
 });

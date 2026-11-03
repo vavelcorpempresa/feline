@@ -24,6 +24,10 @@ import { urlPublica } from '../config';
 //   npm run admin -- proyecto:webhook --id <proyecto> --url https://.../webhook   (genera secreto nuevo; --url "" lo quita)
 //   npm run admin -- proyecto:revocar --id <proyecto>
 //   (api-client:crear se mantiene como alias de proyecto:conectar)
+//
+// FOLIOS CONSUMIDOS SIN DOCUMENTO (emisiones que fallaron después de asignar el folio):
+//   npm run admin -- folios:sin-uso --rut 76192083-9
+//   npm run admin -- folios:anulados --rut 76192083-9 --tipo 33 --folios 15,16   (tras anularlos en el SII)
 //   npm run admin -- dev:empresa-prueba --webhook-url http://localhost:3000/api/v1/billing/webhook   (solo desarrollo)
 // ============================================================================
 
@@ -151,6 +155,26 @@ export class FelineAdmin {
     const webhookSecret = crypto.randomBytes(32).toString('hex');
     await this.prisma.apiClient.update({ where: { id }, data: { webhookUrl: url, webhookSecret } });
     return { webhookUrl: url, webhookSecret };
+  }
+
+  /** Folios consumidos sin documento, pendientes de anular ante el SII. */
+  public async foliosSinUso(rut: string) {
+    const tenant = await this.tenantPorRut(rut);
+    return this.prisma.folioSinUso.findMany({
+      where: { tenantId: tenant.id, anuladoAt: null },
+      orderBy: [{ tipoDte: 'asc' }, { folio: 'asc' }],
+      select: { tipoDte: true, folio: true, motivo: true, createdAt: true },
+    });
+  }
+
+  /** Marca folios como ya anulados ante el SII (después de informarlos en el sitio del SII). */
+  public async marcarFoliosAnulados(rut: string, tipoDte: number, folios: number[]) {
+    const tenant = await this.tenantPorRut(rut);
+    const { count } = await this.prisma.folioSinUso.updateMany({
+      where: { tenantId: tenant.id, tipoDte, folio: { in: folios }, anuladoAt: null },
+      data: { anuladoAt: new Date() },
+    });
+    return count;
   }
 
   public async revocarProyecto(id: string) {
@@ -327,6 +351,21 @@ async function main() {
         else console.log(`Webhook: ${r.webhookUrl}\nFELINE_WEBHOOK_SECRET=${r.webhookSecret}`);
         break;
       }
+      case 'folios:sin-uso': {
+        const lista = await admin.foliosSinUso(requerido('rut'));
+        if (!lista.length) console.log('No hay folios pendientes de anular.');
+        else {
+          console.log('Folios consumidos sin documento (anúlalos en el sitio del SII y luego márcalos):');
+          console.table(lista.map((f) => ({ tipo: f.tipoDte, folio: f.folio, fecha: f.createdAt.toISOString().slice(0, 10), motivo: f.motivo.slice(0, 80) })));
+        }
+        break;
+      }
+      case 'folios:anulados': {
+        const folios = requerido('folios').split(',').map((f) => Number(f.trim())).filter(Number.isInteger);
+        const n = await admin.marcarFoliosAnulados(requerido('rut'), Number(requerido('tipo')), folios);
+        console.log(n + ' folio(s) marcados como anulados ante el SII.');
+        break;
+      }
       case 'proyecto:revocar': {
         const r = await admin.revocarProyecto(requerido('id'));
         console.log(`Proyecto "${r.nombre}" revocado: su clave ya no funciona.`);
@@ -349,7 +388,8 @@ async function main() {
       default:
         console.log(
           'Comandos: empresa:crear | certificado:cargar | caf:cargar | dev:empresa-prueba\n' +
-            '          proyecto:conectar | proyecto:listar | proyecto:rotar-clave | proyecto:webhook | proyecto:revocar'
+            '          proyecto:conectar | proyecto:listar | proyecto:rotar-clave | proyecto:webhook | proyecto:revocar\n' +
+            '          folios:sin-uso | folios:anulados'
         );
         process.exitCode = 1;
     }

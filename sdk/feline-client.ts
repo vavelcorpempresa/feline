@@ -112,6 +112,8 @@ export interface Empresa {
   empresa: { rut: string; razonSocial: string; giro: string; ambienteSii: 'CERTIFICACION' | 'PRODUCCION' };
   certificado: { titular: string; venceEl: string } | null;
   foliosDisponibles: Array<{ tipoDte: number; disponibles: number }>;
+  /** Folios consumidos por emisiones fallidas que deben anularse ante el SII. */
+  foliosPorAnular: Array<{ tipoDte: number; folio: number }>;
 }
 
 export type EventoWebhook =

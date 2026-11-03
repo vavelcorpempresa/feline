@@ -107,17 +107,11 @@ export class DteBillingOrchestratorService {
     const { mntNeto, mntExento, tasaIva, iva, mntTotal } =
       DteBillingOrchestratorService.calcularTotalesSii(tipoDte, detalles);
 
-    // 4. Asignar siguiente folio de manera atómica (SELECT ... FOR UPDATE)
-    const { folio, cafId, cafData } = await this.cafTedService.allocateNextFolio(
-      tenantId,
-      tipoDte
-    );
-
-    // 5. Construir el árbol XML del DTE + Timbre Electrónico <TED>
-    const { docId, tedXml, unsignedDteXml } = DteXmlBuilderService.buildDocumentoXml({
+    // 4. Validar todo lo que no depende del folio ANTES de consumirlo
+    const datosDocumento = {
       idDoc: {
         TipoDTE: tipoDte,
-        Folio: folio,
+        Folio: 0, // se reemplaza por el folio asignado
         FchEmis: fechaEmision,
         FmaPago: fmaPago ?? 1,
         FchVenc: fechaVenc,
@@ -151,13 +145,27 @@ export class DteBillingOrchestratorService {
       },
       detalles,
       referencias,
+    };
+    DteXmlBuilderService.validarAntesDeFolio(datosDocumento);
+
+    // 5. Asignar siguiente folio de manera atómica (SELECT ... FOR UPDATE)
+    const { folio, cafId, cafData } = await this.cafTedService.allocateNextFolio(
+      tenantId,
+      tipoDte
+    );
+
+    try {
+    // 6. Construir el árbol XML del DTE + Timbre Electrónico <TED>
+    const { docId, tedXml, unsignedDteXml } = DteXmlBuilderService.buildDocumentoXml({
+      ...datosDocumento,
+      idDoc: { ...datosDocumento.idDoc, Folio: folio },
       caf: cafData,
     });
 
-    // 6. Firmar el <DTE> con la Firma Electrónica Avanzada (XMLDSig) del Tenant
+    // 7. Firmar el <DTE> con la Firma Electrónica Avanzada (XMLDSig) del Tenant
     const signedDteXml = XmlDsigSignerService.signDteXml(unsignedDteXml, docId, cert, true);
 
-    // 7. Persistir el DTE firmado en PostgreSQL
+    // 8. Persistir el DTE firmado en PostgreSQL
     const documentoRecord = await this.prisma.documentoDTE.create({
       data: {
         tenantId,
@@ -183,6 +191,15 @@ export class DteBillingOrchestratorService {
     });
 
     return documentoRecord;
+    } catch (err) {
+      // El folio ya se consumió y no tiene documento: queda registrado para anularlo ante el SII
+      await this.prisma.folioSinUso
+        .create({
+          data: { tenantId, tipoDte, folio, motivo: String((err as Error)?.message ?? err).slice(0, 2000) },
+        })
+        .catch(() => undefined);
+      throw err;
+    }
   }
 
   /**

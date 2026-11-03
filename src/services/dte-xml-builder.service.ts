@@ -29,6 +29,34 @@ export class DteXmlBuilderService {
   }
 
   /**
+   * Valida los datos que no dependen del folio ni del CAF. Se ejecuta ANTES de asignar el folio:
+   * un error de datos no debe consumir un folio (que luego habría que anular ante el SII).
+   */
+  public static validarAntesDeFolio(input: Omit<ConstruirDteInput, 'caf'>): void {
+    const { idDoc, emisor, receptor, detalles, referencias } = input;
+    const isBoleta = DteXmlBuilderService.isBoleta(idDoc.TipoDTE);
+    normalizeAndValidateRut(emisor.RUTEmisor);
+    normalizeAndValidateRut(receptor.RUTRecep);
+    if (!detalles || detalles.length === 0) {
+      throw new Error('El DTE debe contener al menos 1 ítem en <Detalle>.');
+    }
+    if (!isBoleta && (emisor.Acteco || []).length === 0) {
+      throw new Error('Todo DTE (excepto Boletas) requiere al menos un código <Acteco> en <Emisor>.');
+    }
+    if (!isBoleta && (!receptor.GiroRecep || !receptor.DirRecep || !receptor.CmnaRecep)) {
+      throw new Error(
+        `Para TipoDTE ${idDoc.TipoDTE}, los campos GiroRecep, DirRecep y CmnaRecep son estrictamente obligatorios según DTE_v10.xsd.`
+      );
+    }
+    if (
+      (idDoc.TipoDTE === CodigoTipoDTE.NotaCreditoElectronica || idDoc.TipoDTE === CodigoTipoDTE.NotaDebitoElectronica) &&
+      (!referencias || referencias.length === 0)
+    ) {
+      throw new Error(`El TipoDTE ${idDoc.TipoDTE} exige al menos un nodo <Referencia> según la normativa del SII.`);
+    }
+  }
+
+  /**
    * Construye el nodo <Documento ID="..."> completo con su Timbre Electrónico <TED>
    * listo para ser firmado mediante XMLDSig.
    */

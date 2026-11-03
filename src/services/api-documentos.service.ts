@@ -294,7 +294,7 @@ export class ApiDocumentosService {
 
   /** Datos de la empresa de la clave: identidad, ambiente SII, certificado y folios disponibles. */
   public async empresa(client: ApiClientContext) {
-    const [tenant, cert, cafs] = await Promise.all([
+    const [tenant, cert, cafs, sinUso] = await Promise.all([
       this.prisma.tenant.findUniqueOrThrow({ where: { id: client.tenantId } }),
       this.prisma.certificadoDigital.findFirst({
         where: { tenantId: client.tenantId, isActive: true },
@@ -304,6 +304,11 @@ export class ApiDocumentosService {
       this.prisma.cafFolio.findMany({
         where: { tenantId: client.tenantId, activo: true, agotado: false },
         select: { tipoDte: true, folioActual: true, folioHasta: true },
+      }),
+      this.prisma.folioSinUso.findMany({
+        where: { tenantId: client.tenantId, anuladoAt: null },
+        select: { tipoDte: true, folio: true },
+        orderBy: [{ tipoDte: 'asc' }, { folio: 'asc' }],
       }),
     ]);
 
@@ -322,6 +327,8 @@ export class ApiDocumentosService {
       foliosDisponibles: Array.from(folios.entries())
         .sort(([a], [b]) => a - b)
         .map(([tipoDte, disponibles]) => ({ tipoDte, disponibles })),
+      // Folios consumidos por emisiones fallidas: deben anularse ante el SII
+      foliosPorAnular: sinUso,
     };
   }
 
