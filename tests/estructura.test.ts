@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import { VERSION, puerto, urlPublica } from '../src/config';
+import vm from 'node:vm';
 import { renderFelineAntdDashboardHtml } from '../src/ui/feline-antd-dashboard.html';
+import { renderPanel } from '../src/ui/panel-compilado';
 
 // ============================================================================
 // ESTRUCTURA (auditoría ACF, grupo 4): versión única, dependencias fijas
@@ -46,5 +48,24 @@ describe('Estructura del proyecto', () => {
     for (const dep of Object.keys(pkg.dependencies)) {
       expect(fuentes.includes("'" + dep + "'") || fuentes.includes('"' + dep + '"') || fuentes.includes(dep + '/'), dep).toBe(true);
     }
+  });
+
+  it('El panel se entrega compilado: sin JSX ni Babel en el navegador, con JavaScript válido', () => {
+    for (const marca of ['feline', 'rocas'] as const) {
+      const html = renderPanel(marca);
+      expect(html).not.toContain('text/babel');
+      expect(html).not.toContain('@babel/standalone');
+      const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+      expect(scripts.length).toBe(1);
+      // Compila como JavaScript estándar (no se ejecuta: necesita React y antd del navegador)
+      expect(() => new vm.Script(scripts[0])).not.toThrow();
+      expect(scripts[0]).toContain('React.createElement');
+      // Misma instancia en caché en el segundo pedido
+      expect(renderPanel(marca)).toBe(html);
+      // Mantiene los datos de la marca interpolados
+      expect(html).toContain(marca === 'rocas' ? 'Rocas del Sur' : 'Feline Capital');
+    }
+    // El código fuente sí sigue en JSX (se edita igual que antes)
+    expect(renderFelineAntdDashboardHtml('feline')).toContain('<script type="text/babel">');
   });
 });

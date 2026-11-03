@@ -20,7 +20,7 @@ import {
   FELINE_ROLE_PROFILES,
   FelineRoleKey,
 } from './services/feline-live-sandbox.service';
-import { renderFelineAntdDashboardHtml } from './ui/feline-antd-dashboard.html';
+import { renderPanel } from './ui/panel-compilado';
 import { CodigoTipoDTE } from './types/sii-dte.types';
 import { normalizeAndValidateRut } from './utils/sii-normative.utils';
 import { registerApiV1 } from './api/v1/documentos.routes';
@@ -137,19 +137,19 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
         ],
       };
     }
-    return reply.type('text/html; charset=utf-8').send(renderFelineAntdDashboardHtml(currentBrand));
+    return reply.type('text/html; charset=utf-8').send(renderPanel(currentBrand));
   });
 
   app.get('/dashboard', async (_request, reply) => {
-    return reply.type('text/html; charset=utf-8').send(renderFelineAntdDashboardHtml(currentBrand));
+    return reply.type('text/html; charset=utf-8').send(renderPanel(currentBrand));
   });
 
   app.get('/rocas', async (_request, reply) => {
-    return reply.type('text/html; charset=utf-8').send(renderFelineAntdDashboardHtml('rocas'));
+    return reply.type('text/html; charset=utf-8').send(renderPanel('rocas'));
   });
 
   app.get('/feline', async (_request, reply) => {
-    return reply.type('text/html; charset=utf-8').send(renderFelineAntdDashboardHtml('feline'));
+    return reply.type('text/html; charset=utf-8').send(renderPanel('feline'));
   });
 
   app.get('/api/v1/status', async () => ({

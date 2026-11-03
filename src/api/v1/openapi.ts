@@ -136,7 +136,7 @@ export function buildOpenApiSpec(publicBaseUrl: string) {
     paths: {
       '/v1/empresa': {
         get: {
-          summary: 'Empresa de la clave, certificado vigente y folios disponibles',
+          summary: 'Empresa de la clave, certificado vigente, folios disponibles y folios por anular ante el SII',
           responses: { '200': { description: 'OK' }, '401': error('Clave inválida') },
         },
       },
