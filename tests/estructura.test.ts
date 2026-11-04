@@ -27,16 +27,14 @@ describe('Estructura del proyecto', () => {
   });
 
   it('El panel carga cada librería externa con versión fija', () => {
-    for (const marca of ['feline', 'rocas'] as const) {
-      const html = renderFelineAntdDashboardHtml(marca);
-      const scripts = [...html.matchAll(/<script[^>]*src="(https:\/\/unpkg\.com\/[^"]+)"/g)].map((m) => m[1]);
-      expect(scripts.length).toBeGreaterThan(0);
-      for (const url of scripts) {
-        // paquete@versión exacta (x.y.z)
-        expect(url, url).toMatch(/^https:\/\/unpkg\.com\/(@[^/]+\/)?[^/@]+@\d+\.\d+\.\d+\//);
-      }
-      expect(html).toContain('Feline v' + VERSION);
+    const html = renderFelineAntdDashboardHtml();
+    const scripts = [...html.matchAll(/<script[^>]*src="(https:\/\/unpkg\.com\/[^"]+)"/g)].map((m) => m[1]);
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const url of scripts) {
+      // paquete@versión exacta (x.y.z)
+      expect(url, url).toMatch(/^https:\/\/unpkg\.com\/(@[^/]+\/)?[^/@]+@\d+\.\d+\.\d+\//);
     }
+    expect(html).toContain('Feline v' + VERSION);
   });
 
   it('No hay dependencias declaradas que el código no use', () => {
@@ -51,21 +49,34 @@ describe('Estructura del proyecto', () => {
   });
 
   it('El panel se entrega compilado: sin JSX ni Babel en el navegador, con JavaScript válido', () => {
-    for (const marca of ['feline', 'rocas'] as const) {
-      const html = renderPanel(marca);
-      expect(html).not.toContain('text/babel');
-      expect(html).not.toContain('@babel/standalone');
-      const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-      expect(scripts.length).toBe(1);
-      // Compila como JavaScript estándar (no se ejecuta: necesita React y antd del navegador)
-      expect(() => new vm.Script(scripts[0])).not.toThrow();
-      expect(scripts[0]).toContain('React.createElement');
-      // Misma instancia en caché en el segundo pedido
-      expect(renderPanel(marca)).toBe(html);
-      // Mantiene los datos de la marca interpolados
-      expect(html).toContain(marca === 'rocas' ? 'Rocas del Sur' : 'Feline Capital');
-    }
+    const html = renderPanel();
+    expect(html).not.toContain('text/babel');
+    expect(html).not.toContain('@babel/standalone');
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+    expect(scripts.length).toBe(1);
+    // Compila como JavaScript estándar (no se ejecuta: necesita React y antd del navegador)
+    expect(() => new vm.Script(scripts[0])).not.toThrow();
+    expect(scripts[0]).toContain('React.createElement');
+    // Misma instancia en caché en el segundo pedido
+    expect(renderPanel()).toBe(html);
+    expect(html).toContain('Feline Capital');
     // El código fuente sí sigue en JSX (se edita igual que antes)
-    expect(renderFelineAntdDashboardHtml('feline')).toContain('<script type="text/babel">');
+    expect(renderFelineAntdDashboardHtml()).toContain('<script type="text/babel">');
+  });
+
+  it('Rocas del Sur quedó unificado en Feline: una sola marca y las rutas antiguas redirigen', async () => {
+    const html = renderPanel();
+    expect(html).not.toMatch(/Rocas del Sur|rocasdelsur|rds-/);
+    const { buildFastifyApp } = await import('../src/server');
+    const app = buildFastifyApp({ siiModo: 'simulado' });
+    for (const ruta of ['/rocas', '/feline']) {
+      const res = await app.inject({ method: 'GET', url: ruta });
+      expect(res.statusCode, ruta).toBe(301);
+      expect(res.headers.location).toBe('/');
+    }
+    const raiz = await app.inject({ method: 'GET', url: '/', headers: { accept: 'application/json' } });
+    expect(raiz.json()).toMatchObject({ system: 'Feline' });
+    expect(raiz.json().brand).toBeUndefined();
+    await app.close();
   });
 });

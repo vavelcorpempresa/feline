@@ -4,14 +4,13 @@ import { renderFelineAntdDashboardHtml } from './feline-antd-dashboard.html';
 // ============================================================================
 // PANEL COMPILADO EN EL SERVIDOR
 // El panel se escribe en JSX dentro de <script type="text/babel">. Antes, el navegador
-// descargaba Babel (~3 MB) y lo traducía en cada carga. Ahora se compila una vez por marca
-// con esbuild al primer pedido y se entrega como JavaScript normal (en caché por proceso).
+// descargaba Babel (~3 MB) y lo traducía en cada carga. Ahora se compila una vez con esbuild
+// al primer pedido y se entrega como JavaScript normal (en caché por proceso).
 // ============================================================================
 
-type Marca = 'feline' | 'rocas';
 const BLOQUE_JSX = /<script type="text\/babel">([\s\S]*?)<\/script>/;
 const SCRIPT_BABEL = /\s*<script src="https:\/\/unpkg\.com\/@babel\/standalone@[^"]+"><\/script>/;
-const cache = new Map<Marca, string>();
+let cache: string | null = null;
 
 export function compilarPanel(html: string): string {
   const bloque = html.match(BLOQUE_JSX);
@@ -27,11 +26,7 @@ export function compilarPanel(html: string): string {
   return html.replace(BLOQUE_JSX, () => '<script>' + code + '</script>').replace(SCRIPT_BABEL, '');
 }
 
-export function renderPanel(marca: Marca): string {
-  let html = cache.get(marca);
-  if (!html) {
-    html = compilarPanel(renderFelineAntdDashboardHtml(marca));
-    cache.set(marca, html);
-  }
-  return html;
+export function renderPanel(): string {
+  if (!cache) cache = compilarPanel(renderFelineAntdDashboardHtml());
+  return cache;
 }

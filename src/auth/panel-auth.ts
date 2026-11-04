@@ -192,6 +192,21 @@ export function registrarAutenticacionPanel(app: FastifyInstance, store: FelineL
     return { usuario: usuarioPublico(usuario), permisos: permisosDe(usuario) };
   });
 
+  // Acceso rápido SOLO en desarrollo: lista los usuarios de demostración con la clave de demostración
+  // para entrar con un clic. En producción la ruta no existe (404) y la clave nunca sale del servidor.
+  app.get('/api/v1/panel/acceso-desarrollo', async (request, reply) => {
+    if (process.env.NODE_ENV === 'production') return reply.code(404).send({ error: 'No encontrado' });
+    const clave = claveDemo((m) => request.log.warn(m));
+    const usuarios = store.users
+      .filter((u) => u.isActive && !(u as UserDemoRecord & { passwordHash?: string }).passwordHash)
+      .map((u) => ({
+        email: u.email,
+        nombre: u.name,
+        rol: FELINE_ROLE_PROFILES.find((r) => r.key === u.roleKey)?.name ?? u.roleKey,
+      }));
+    return { clave, usuarios };
+  });
+
   app.post('/api/v1/panel/logout', async (_request, reply) => {
     reply.header('Set-Cookie', cookieSesion('', 0));
     return { ok: true };

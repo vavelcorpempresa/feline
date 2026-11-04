@@ -39,14 +39,14 @@ A multi-company engine built in house: one installation serves several companies
 
 - The current panel is a React 18 + Ant Design 5 app rendered from a Fastify string template (`src/ui/feline-antd-dashboard.html.ts`), with in-browser Babel and libraries from a CDN.
 - The panel's data comes from the in-memory sandbox (`/api/v1/dashboard/*`); the real API v1 (PostgreSQL) is used by connected projects.
-- The panel is served under two brands: `/` (Feline Capital) and `/rocas` (Rocas del Sur).
+- The panel is served under a single brand, Feline Capital, at `/`. Rocas del Sur was unified into Feline (2026-11-03): the old `/rocas` and `/feline` addresses redirect to `/`.
 - Amounts in CLP with no decimals; RUT formatted with a check digit.
 - Open: authentication and roles per user group (the "Usuarios y Permisos" screen exists but there are no real permissions yet).
 
 ## Brand Commitments
 
-- **Feline Capital** and **Rocas del Sur** are two of the owner's companies; each one uses the panel with its own brand. Both brands must keep working.
-- Assets: `src/ui/assets/logo-feline-capital.svg` (shield + name; isotype separate in `feline-logo.ts`) and `src/ui/assets/logo-rocas-del-sur.svg`. They are used as CSS masks, so each screen sets their color.
+- **Feline Capital** is the only brand of the system. Rocas del Sur is one of the owner's companies and works inside Feline as another company (tenant), not as a separate brand.
+- Assets: `src/ui/assets/logo-feline-capital.svg` (shield + name; isotype separate in `feline-logo.ts`). It is used as a CSS mask (`.fl-logo`), so each screen sets its color.
 - External clients see the panel under their own brand (white label): the system must allow per-company branding.
 
 ## Evidence on Hand

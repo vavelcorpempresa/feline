@@ -8,15 +8,11 @@
 // ============================================================================
 
 import { FELINE_LOGO_DATA_URI, FELINE_ISOTIPO_DATA_URI } from './feline-logo';
-import { RDS_LOGO_DATA_URI } from './rds-logo';
 import { VERSION } from '../config';
 
-export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'feline'): string {
-  const isRocas = brand === 'rocas';
-  const pageTitle = isRocas
-    ? 'Rocas del Sur — Facturación electrónica'
-    : 'Feline Capital — Facturación electrónica';
-  const defaultStyle = isRocas ? 'rocasdelsur' : 'feline';
+export function renderFelineAntdDashboardHtml(): string {
+  const pageTitle = 'Feline Capital — Facturación electrónica';
+  const defaultStyle = 'feline';
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -91,35 +87,15 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
       padding-left: 12px;
     }
 
-    /* ================= Feline Capital & Rocas del Sur ================= */
-    .rds-logo {
-      display: inline-block;
-      flex-shrink: 0;
-      background-color: currentColor;
-      -webkit-mask: url('${isRocas ? RDS_LOGO_DATA_URI : FELINE_LOGO_DATA_URI}') ${isRocas ? 'center' : 'left center'} / contain no-repeat;
-      mask: url('${isRocas ? RDS_LOGO_DATA_URI : FELINE_LOGO_DATA_URI}') ${isRocas ? 'center' : 'left center'} / contain no-repeat;
-    }
-    .rds-logo.rds-isotipo {
-      -webkit-mask-image: url('${isRocas ? RDS_LOGO_DATA_URI : FELINE_ISOTIPO_DATA_URI}');
-      mask-image: url('${isRocas ? RDS_LOGO_DATA_URI : FELINE_ISOTIPO_DATA_URI}');
-      -webkit-mask-position: center;
-      mask-position: center;
-    }
-    .rds-logo-rocas {
-      display: inline-block;
-      flex-shrink: 0;
-      background-color: currentColor;
-      -webkit-mask: url('${RDS_LOGO_DATA_URI}') center / contain no-repeat;
-      mask: url('${RDS_LOGO_DATA_URI}') center / contain no-repeat;
-    }
-    .rds-logo-feline {
+    /* ================= Marca Feline Capital ================= */
+    .fl-logo {
       display: inline-block;
       flex-shrink: 0;
       background-color: currentColor;
       -webkit-mask: url('${FELINE_LOGO_DATA_URI}') left center / contain no-repeat;
       mask: url('${FELINE_LOGO_DATA_URI}') left center / contain no-repeat;
     }
-    .rds-logo-feline.rds-isotipo {
+    .fl-logo.fl-isotipo {
       -webkit-mask-image: url('${FELINE_ISOTIPO_DATA_URI}');
       mask-image: url('${FELINE_ISOTIPO_DATA_URI}');
       -webkit-mask-position: center;
@@ -132,78 +108,86 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
     .ing-texto { margin: 0 0 22px; color: #A9AEB6; font-size: 14px; }
     .ing .ant-form-item-label > label { color: #A9AEB6; }
     .ing-error { margin: -4px 0 14px; color: #F28B66; font-size: 13px; }
+    .ing-dev { margin-top: 22px; padding-top: 16px; border-top: 1px dashed #2A2D35; }
+    .ing-dev-titulo { margin: 0 0 4px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: #E0B05A; }
+    .ing-dev-clave { margin: 0 0 10px; font-size: 12px; color: #A9AEB6; }
+    .ing-dev-clave code { font-family: 'JetBrains Mono', monospace; color: #ECEDEF; background: #1E2026; padding: 1px 6px; border-radius: 4px; }
+    .ing-dev-usuario { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 10px 12px; margin-bottom: 8px; background: #17191D; border: 1px solid #262931; border-radius: 8px; color: #ECEDEF; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+    .ing-dev-usuario:hover, .ing-dev-usuario:focus-visible { border-color: #E0B05A; background: #1C1E23; outline: none; }
+    .ing-dev-usuario:disabled { opacity: .5; cursor: wait; }
+    .ing-dev-nombre { font-size: 14px; font-weight: 500; }
+    .ing-dev-detalle { font-size: 12px; color: #A9AEB6; }
     .ing-usuario { font-size: 13px; font-weight: 500; white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
-    .rds-theme { font-family: 'DM Sans', system-ui, sans-serif; }
-    .rds-theme h1.ant-typography, .rds-theme h2.ant-typography, .rds-theme h3.ant-typography,
-    .rds-theme h4.ant-typography, .rds-theme .ant-card-head-title, .rds-theme .ant-modal-title,
-    .rds-theme .ant-drawer-title, .rds-theme .ant-statistic-content, .rds-marca-nombre {
+    .fl-theme { font-family: 'DM Sans', system-ui, sans-serif; }
+    .fl-theme h1.ant-typography, .fl-theme h2.ant-typography, .fl-theme h3.ant-typography,
+    .fl-theme h4.ant-typography, .fl-theme .ant-card-head-title, .fl-theme .ant-modal-title,
+    .fl-theme .ant-drawer-title, .fl-theme .ant-statistic-content, .fl-marca-nombre {
       font-family: 'Outfit', 'DM Sans', sans-serif;
       letter-spacing: -0.01em;
     }
-    .rds-theme .ant-card-head-title { font-weight: 500; }
-    .rds-theme .ant-statistic-title { font-size: 13.5px; }
-    .rds-theme .ant-statistic-content-value { font-weight: 400 !important; letter-spacing: -0.02em; }
-    .rds-theme .ant-btn { display: inline-flex; align-items: center; gap: 6px; }
-    .rds-theme .ant-menu-item { display: flex; align-items: center; }
-    .rds-theme .ant-menu-item > svg + .ant-menu-title-content { margin-inline-start: 12px; }
-    .rds-theme .ant-menu-inline-collapsed .ant-menu-item > svg + .ant-menu-title-content { margin-inline-start: 0; }
-    .rds-theme .ant-menu-inline-collapsed .ant-menu-item { justify-content: center; }
-    .rds-theme .ant-menu-inline-collapsed .ant-menu-item .ant-menu-title-content { display: none; }
-    .rds-theme .rds-header-acciones { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; }
-    .rds-theme .rds-header-empresa { display: flex; align-items: center; gap: 10px; min-width: 200px; flex: 1 1 auto; }
-    @media (max-width: 1280px) {
-      .rds-theme .rds-header-acciones .ant-btn:not(.ant-btn-icon-only):not(.ant-btn-primary) { font-size: 0; gap: 0; padding: 0 10px; }
-      .rds-theme .rds-header-empresa > .ant-typography { display: none; }
+    .fl-theme .ant-card-head-title { font-weight: 500; }
+    .fl-theme .ant-statistic-title { font-size: 13.5px; }
+    .fl-theme .ant-statistic-content-value { font-weight: 400 !important; letter-spacing: -0.02em; }
+    .fl-theme .ant-btn { display: inline-flex; align-items: center; gap: 6px; }
+    .fl-theme .ant-menu-item { display: flex; align-items: center; }
+    .fl-theme .ant-menu-item > svg + .ant-menu-title-content { margin-inline-start: 12px; }
+    .fl-theme .ant-menu-inline-collapsed .ant-menu-item > svg + .ant-menu-title-content { margin-inline-start: 0; }
+    .fl-theme .ant-menu-inline-collapsed .ant-menu-item { justify-content: center; }
+    .fl-theme .ant-menu-inline-collapsed .ant-menu-item .ant-menu-title-content { display: none; }
+    .fl-header-acciones { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; }
+    /* min-width: 0 deja que el selector de empresa se encoja (con puntos suspensivos) en vez de tapar al usuario */
+    .fl-header-empresa { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 0; }
+    .fl-header-empresa .ant-select { flex: 1 1 auto; min-width: 0; max-width: 340px; }
+    /* Celular y tablet vertical: encabezado en dos filas (empresa arriba, acciones abajo con desplazamiento propio)
+       y botones de tarjetas que pasan a la línea siguiente, para que la página nunca se desborde a lo ancho */
+    @media (max-width: 767px) {
+      .fl-header { height: auto !important; flex-wrap: wrap; row-gap: 8px; padding: 10px 12px !important; overflow: visible !important; line-height: normal; }
+      .fl-header .fl-header-empresa { flex: 1 1 100%; }
+      .fl-header .fl-header-empresa .ant-select { max-width: none; }
+      .fl-header .fl-header-acciones { flex: 1 1 100%; overflow-x: auto; padding-bottom: 2px; }
+      .fl-header .ing-usuario { display: none; }
+      .ant-card-head-wrapper { flex-wrap: wrap; row-gap: 8px; padding-block: 8px; }
+      .ant-card-head-title { flex: 1 1 100%; }
+      .ant-card-extra { margin-inline-start: 0 !important; max-width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+      .ant-card-extra .ant-space { flex-wrap: wrap; max-width: 100%; }
     }
-    .rds-theme .ant-btn-icon-only { justify-content: center; }
-    .rds-theme .ant-card-head-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .rds-theme .ant-table-thead > tr > th { white-space: nowrap; }
-    .rds-theme .ant-card-body { overflow-x: auto; }
-    .rds-theme .ant-layout-sider-trigger { background: #00152B !important; color: #C9D8EA !important; border-top: 1px solid rgba(255,255,255,0.08); }
-    .rds-claro .ant-layout-sider-trigger { background: #00152B !important; color: #C9D8EA !important; border-top: 1px solid rgba(255,255,255,0.08); }
-    .rds-rocas.rds-theme .ant-layout-sider-trigger { background: #1A1613 !important; color: #D8BB96 !important; border-top: 1px solid rgba(255,255,255,0.08); }
-    .rds-rocas.rds-claro .ant-layout-sider-trigger { background: #E8DAC6 !important; color: #5C432A !important; border-top: 1px solid #E3D7C7; }
-    .rds-claro .ant-alert-success { background: #E3F0E9; border-color: #BFDCCB; }
-    .rds-claro .ant-alert-info { background: #E6F0FC; border-color: #B9D4F5; }
-    .rds-rocas.rds-claro .ant-alert-info { background: #EFE4D5; border-color: #D8BB96; }
-    .rds-claro .ant-alert-warning { background: #F7EBD6; border-color: #E8CFA0; }
-    .rds-claro .ant-alert-error { background: #F6E1DC; border-color: #EDC3B9; }
-    .rds-claro .ant-alert .ant-alert-message { color: #0B1B2E; }
-    .rds-claro .ant-alert .ant-alert-description { color: #4A5B70; }
-    .rds-rocas.rds-claro .ant-alert .ant-alert-message { color: #1F1B17; }
-    .rds-rocas.rds-claro .ant-alert .ant-alert-description { color: #4F453C; }
-    .rds-theme:not(.rds-claro) .ant-tag-blue, .rds-theme:not(.rds-claro) .ant-tag-geekblue, .rds-theme:not(.rds-claro) .ant-tag-purple,
-    .rds-theme:not(.rds-claro) .ant-tag-processing, .rds-theme:not(.rds-claro) .ant-tag-cyan {
+    @media (max-width: 1280px) {
+      .fl-theme .fl-header-acciones .ant-btn:not(.ant-btn-icon-only):not(.ant-btn-primary):not(.fl-btn-texto) { font-size: 0; gap: 0; padding: 0 10px; }
+      .fl-theme .fl-header-empresa > .ant-typography { display: none; }
+    }
+    .fl-theme .ant-btn-icon-only { justify-content: center; }
+    .fl-theme .ant-card-head-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fl-theme .ant-table-thead > tr > th { white-space: nowrap; }
+    .fl-theme .ant-card-body { overflow-x: auto; }
+    .fl-theme .ant-layout-sider-trigger { background: #00152B !important; color: #C9D8EA !important; border-top: 1px solid rgba(255,255,255,0.08); }
+    .fl-claro .ant-layout-sider-trigger { background: #00152B !important; color: #C9D8EA !important; border-top: 1px solid rgba(255,255,255,0.08); }
+    .fl-claro .ant-alert-success { background: #E3F0E9; border-color: #BFDCCB; }
+    .fl-claro .ant-alert-info { background: #E6F0FC; border-color: #B9D4F5; }
+    .fl-claro .ant-alert-warning { background: #F7EBD6; border-color: #E8CFA0; }
+    .fl-claro .ant-alert-error { background: #F6E1DC; border-color: #EDC3B9; }
+    .fl-claro .ant-alert .ant-alert-message { color: #0B1B2E; }
+    .fl-claro .ant-alert .ant-alert-description { color: #4A5B70; }
+    .fl-theme:not(.fl-claro) .ant-tag-blue, .fl-theme:not(.fl-claro) .ant-tag-geekblue, .fl-theme:not(.fl-claro) .ant-tag-purple,
+    .fl-theme:not(.fl-claro) .ant-tag-processing, .fl-theme:not(.fl-claro) .ant-tag-cyan {
       color: #7DB6F5; background: rgba(0,115,230,0.16); border-color: rgba(125,182,245,0.35);
     }
-    .rds-rocas.rds-theme:not(.rds-claro) .ant-tag-blue, .rds-rocas.rds-theme:not(.rds-claro) .ant-tag-geekblue, .rds-rocas.rds-theme:not(.rds-claro) .ant-tag-purple,
-    .rds-rocas.rds-theme:not(.rds-claro) .ant-tag-processing, .rds-rocas.rds-theme:not(.rds-claro) .ant-tag-cyan {
-      color: #D8BB96; background: rgba(216,187,150,0.12); border-color: rgba(216,187,150,0.35);
-    }
-    .rds-theme:not(.rds-claro) .ant-tag-green, .rds-theme:not(.rds-claro) .ant-tag-success { color: #8FCBAE; background: rgba(47,125,91,0.18); border-color: rgba(143,203,174,0.35); }
-    .rds-theme:not(.rds-claro) .ant-tag-orange, .rds-theme:not(.rds-claro) .ant-tag-gold, .rds-theme:not(.rds-claro) .ant-tag-warning { color: #E6BE7A; background: rgba(183,121,31,0.18); border-color: rgba(230,190,122,0.35); }
-    .rds-theme:not(.rds-claro) .ant-tag-red, .rds-theme:not(.rds-claro) .ant-tag-error, .rds-theme:not(.rds-claro) .ant-tag-volcano { color: #E79A8A; background: rgba(180,67,47,0.2); border-color: rgba(231,154,138,0.35); }
-    .rds-theme:not(.rds-claro) .ant-alert-success { background: rgba(47,125,91,0.16); border-color: rgba(143,203,174,0.3); }
-    .rds-theme .ant-menu-item-group-title { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
-    .rds-theme .ant-tag { border-radius: 999px; padding-inline: 10px; }
-    .rds-theme .ant-segmented-item-label { display: flex; align-items: center; justify-content: center; min-height: 28px; }
-    .rds-theme .xml-viewer { background: #001E3B; color: #E6EEF7; border-color: #003366; }
-    .rds-theme .ted-Stamp-box { border-color: #0051A2; color: #0B1B2E; }
-    .rds-theme .f29-box { border-left-color: #0062C4; }
-    .rds-rocas.rds-theme .xml-viewer { background: #1F1B17; color: #F4EDE4; border-color: #3A322B; }
-    .rds-rocas.rds-theme .ted-Stamp-box { border-color: #B08A5E; color: #1F1B17; }
-    .rds-rocas.rds-theme .f29-box { border-left-color: #B08A5E; }
-    .rds-claro .ant-tag-blue, .rds-claro .ant-tag-geekblue, .rds-claro .ant-tag-purple,
-    .rds-claro .ant-tag-processing, .rds-claro .ant-tag-cyan {
+    .fl-theme:not(.fl-claro) .ant-tag-green, .fl-theme:not(.fl-claro) .ant-tag-success { color: #8FCBAE; background: rgba(47,125,91,0.18); border-color: rgba(143,203,174,0.35); }
+    .fl-theme:not(.fl-claro) .ant-tag-orange, .fl-theme:not(.fl-claro) .ant-tag-gold, .fl-theme:not(.fl-claro) .ant-tag-warning { color: #E6BE7A; background: rgba(183,121,31,0.18); border-color: rgba(230,190,122,0.35); }
+    .fl-theme:not(.fl-claro) .ant-tag-red, .fl-theme:not(.fl-claro) .ant-tag-error, .fl-theme:not(.fl-claro) .ant-tag-volcano { color: #E79A8A; background: rgba(180,67,47,0.2); border-color: rgba(231,154,138,0.35); }
+    .fl-theme:not(.fl-claro) .ant-alert-success { background: rgba(47,125,91,0.16); border-color: rgba(143,203,174,0.3); }
+    .fl-theme .ant-menu-item-group-title { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+    .fl-theme .ant-tag { border-radius: 999px; padding-inline: 10px; }
+    .fl-theme .ant-segmented-item-label { display: flex; align-items: center; justify-content: center; min-height: 28px; }
+    .fl-theme .xml-viewer { background: #001E3B; color: #E6EEF7; border-color: #003366; }
+    .fl-theme .ted-Stamp-box { border-color: #0051A2; color: #0B1B2E; }
+    .fl-theme .f29-box { border-left-color: #0062C4; }
+    .fl-claro .ant-tag-blue, .fl-claro .ant-tag-geekblue, .fl-claro .ant-tag-purple,
+    .fl-claro .ant-tag-processing, .fl-claro .ant-tag-cyan {
       color: #0051A2; background: #E6F0FC; border-color: #B9D4F5;
     }
-    .rds-rocas.rds-claro .ant-tag-blue, .rds-rocas.rds-claro .ant-tag-geekblue, .rds-rocas.rds-claro .ant-tag-purple,
-    .rds-rocas.rds-claro .ant-tag-processing, .rds-rocas.rds-claro .ant-tag-cyan {
-      color: #5C432A; background: #EFE4D5; border-color: #D8BB96;
-    }
-    .rds-claro .ant-tag-green, .rds-claro .ant-tag-success { color: #2F7D5B; background: #E3F0E9; border-color: #BFDCCB; }
-    .rds-claro .ant-tag-orange, .rds-claro .ant-tag-gold, .rds-claro .ant-tag-warning { color: #8A5A12; background: #F7EBD6; border-color: #E8CFA0; }
-    .rds-claro .ant-tag-red, .rds-claro .ant-tag-error, .rds-claro .ant-tag-volcano { color: #B4432F; background: #F6E1DC; border-color: #EDC3B9; }
+    .fl-claro .ant-tag-green, .fl-claro .ant-tag-success { color: #2F7D5B; background: #E3F0E9; border-color: #BFDCCB; }
+    .fl-claro .ant-tag-orange, .fl-claro .ant-tag-gold, .fl-claro .ant-tag-warning { color: #8A5A12; background: #F7EBD6; border-color: #E8CFA0; }
+    .fl-claro .ant-tag-red, .fl-claro .ant-tag-error, .fl-claro .ant-tag-volcano { color: #B4432F; background: #F6E1DC; border-color: #EDC3B9; }
     /* ================= Facturas y boletas: escena de documentos ================= */
     .esc {
       --esc-vacio: #0A0A0A;
@@ -457,8 +441,8 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
     // ========================================================================
     // DESIGN-SPARX / ANTD-MULTIPURPOSE-DASHBOARD THEME ARCHITECTURE (REA)
     // ========================================================================
-    // ---------------------- Feline Capital & Rocas del Sur: iconos y tokens ----------------------
-    const RDS_ICONOS = {
+    // ---------------------- Feline Capital: iconos y tokens de la marca ----------------------
+    const FL_ICONOS = {
       inicio: '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
       libro: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16M15 4v16"/>',
       contabilidad: '<path d="M12 3v18M5 7h14M7 7l-3 7h6zM17 7l-3 7h6z"/><path d="M8 21h8"/>',
@@ -494,13 +478,13 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
           strokeLinejoin="round"
           aria-hidden="true"
           style={{ flexShrink: 0 }}
-          dangerouslySetInnerHTML={{ __html: RDS_ICONOS[nombre] || '' }}
+          dangerouslySetInnerHTML={{ __html: FL_ICONOS[nombre] || '' }}
         />
       );
     }
 
-    const RDS_FUENTE = "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif";
-    const RDS_TOKENS_CLARO = {
+    const FL_FUENTE = "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif";
+    const FL_TOKENS_CLARO = {
       colorText: '#0B1B2E',
       colorTextSecondary: '#4A5B70',
       colorTextTertiary: '#6B7C91',
@@ -514,21 +498,6 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
       colorInfo: '#0062C4',
       colorLink: '#0062C4',
       colorLinkHover: '#0051A2',
-    };
-    const ROCAS_TOKENS_CLARO = {
-      colorText: '#1F1B17',
-      colorTextSecondary: '#6E6257',
-      colorTextTertiary: '#8A7D70',
-      colorBorder: '#E3D7C7',
-      colorBorderSecondary: '#EFE4D5',
-      colorBgLayout: '#F6F1EA',
-      colorFillAlter: '#FBF8F4',
-      colorSuccess: '#2F7D5B',
-      colorWarning: '#B7791F',
-      colorError: '#B4432F',
-      colorInfo: '#7A5B3A',
-      colorLink: '#7A5B3A',
-      colorLinkHover: '#5C432A',
     };
     // Menú lateral azul marino (#001E3B) en modo claro y oscuro
     const FELINE_MENU = {
@@ -545,7 +514,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
       itemMarginInline: 6,
       iconSize: 18,
     };
-    const RDS_COMPONENTES_CLARO = {
+    const FL_COMPONENTES_CLARO = {
       Menu: FELINE_MENU,
       Table: { headerBg: '#F7F9FC', headerColor: '#4A5B70', rowHoverBg: '#F7F9FC', borderColor: '#E6EDF5' },
       Button: { primaryShadow: 'none', defaultShadow: 'none', defaultBorderColor: '#B9CCE2' },
@@ -553,28 +522,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
       Card: { headerFontSize: 17 },
       Segmented: { itemSelectedBg: '#0062C4', itemSelectedColor: '#FFFFFF', trackBg: '#E6EDF5' },
     };
-    const ROCAS_COMPONENTES_CLARO = {
-      Menu: {
-        itemBg: 'transparent',
-        itemSelectedBg: '#D8BB96',
-        itemSelectedColor: '#2A2017',
-        itemColor: '#4F453C',
-        itemHoverBg: 'rgba(255, 255, 255, 0.7)',
-        itemHoverColor: '#1F1B17',
-        itemActiveBg: '#E3D2BA',
-        itemBorderRadius: 14,
-        itemHeight: 44,
-        itemMarginInline: 6,
-        groupTitleColor: '#6E6257',
-        iconSize: 18,
-      },
-      Table: { headerBg: '#FBF8F4', headerColor: '#6E6257', rowHoverBg: '#FBF8F4', borderColor: '#EFE4D5' },
-      Button: { primaryShadow: 'none', defaultShadow: 'none', defaultBorderColor: '#D8BB96' },
-      Tabs: { itemSelectedColor: '#7A5B3A', inkBarColor: '#7A5B3A', itemHoverColor: '#5C432A' },
-      Card: { headerFontSize: 17 },
-      Segmented: { itemSelectedBg: '#D8BB96', itemSelectedColor: '#2A2017', trackBg: '#EFE4D5' },
-    };
-    const RDS_TOKENS_OSCURO = {
+    const FL_TOKENS_OSCURO = {
       colorBgLayout: '#001E3B',
       colorBgContainer: '#002F5D',
       colorBgElevated: '#003366',
@@ -585,29 +533,15 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
       colorLink: '#5AA4F0',
       colorLinkHover: '#7DB6F5',
     };
-    const RDS_COMPONENTES_OSCURO = {
+    const FL_COMPONENTES_OSCURO = {
       Menu: FELINE_MENU,
       Button: { primaryShadow: 'none', defaultShadow: 'none', primaryColor: '#FFFFFF' },
       Table: { headerBg: '#00264C', rowHoverBg: '#003366', borderColor: '#003F7A' },
       Tabs: { itemSelectedColor: '#5AA4F0', inkBarColor: '#0073E6', itemHoverColor: '#7DB6F5' },
       Segmented: { itemSelectedBg: '#0073E6', itemSelectedColor: '#FFFFFF', trackBg: '#00264C' },
     };
-    const ROCAS_COMPONENTES_OSCURO = {
-      Menu: {
-        darkItemBg: 'transparent',
-        darkItemSelectedBg: '#D8BB96',
-        darkItemSelectedColor: '#2A2017',
-        darkItemColor: '#D3C4B0',
-        darkItemHoverBg: 'rgba(216, 187, 150, 0.12)',
-        itemBorderRadius: 14,
-        itemHeight: 44,
-        itemMarginInline: 6,
-      },
-      Button: { primaryShadow: 'none', defaultShadow: 'none', primaryColor: '#2A2017' },
-    };
 
     const STYLE_PRIMARIES = {
-      rocasdelsur:  { light: '#7A5B3A', dark: '#D8BB96', label: 'Rocas del Sur',  desc: 'Arena y tierra de la marca, superficies claras' },
       feline:       { light: '#0062C4', dark: '#0073E6', label: 'Feline Capital', desc: 'Azul marino de la marca, menú lateral oscuro' },
       clean:        { light: '#2b50ed', dark: '#5b7cfa', label: 'Clean (Default)', desc: 'Superficies nítidas corporativas' },
       glassmorphic: { light: '#0ea5e9', dark: '#38bdf8', label: 'Glassmorphic',    desc: 'Efecto cristal con desenfoque' },
@@ -619,21 +553,6 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
     };
 
     function getSurfaceOverrides(styleName, mode) {
-      if (styleName === 'rocasdelsur') {
-        return mode === 'light'
-          ? {
-              bodyBg: '#F6F1EA',
-              cardStyle: { background: '#FFFFFF', border: '1px solid #E3D7C7', borderRadius: 22, boxShadow: 'none' },
-              siderBg: '#EFE4D5',
-              headerBg: '#F6F1EA',
-            }
-          : {
-              bodyBg: '#15120F',
-              cardStyle: { background: '#1F1B17', border: '1px solid #3A322B', borderRadius: 22, boxShadow: 'none' },
-              siderBg: '#1F1B17',
-              headerBg: '#15120F',
-            };
-      }
       if (styleName === 'feline') {
         return mode === 'light'
           ? {
@@ -1284,9 +1203,17 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
     // ========================================================================
     // INICIO DE SESIÓN DEL PANEL
     // ========================================================================
-    function PantallaIngreso({ onIngreso, marca }) {
+    function PantallaIngreso({ onIngreso }) {
       const [enviando, setEnviando] = useState(false);
       const [error, setError] = useState(null);
+      const [accesoDev, setAccesoDev] = useState(null);
+      useEffect(() => {
+        // Solo responde en desarrollo; en producción da 404 y la sección no se muestra
+        fetch('/api/v1/panel/acceso-desarrollo')
+          .then((r) => (r.ok ? r.json() : null))
+          .then(setAccesoDev)
+          .catch(() => setAccesoDev(null));
+      }, []);
       const ingresar = async (valores) => {
         setEnviando(true);
         setError(null);
@@ -1309,9 +1236,9 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
         <div className="ing">
           <main className="ing-caja">
             <span
-              className={marca === 'rocas' ? 'rds-logo-rocas ing-logo' : 'rds-logo-feline ing-logo'}
+              className="fl-logo ing-logo"
               role="img"
-              aria-label={marca === 'rocas' ? 'Rocas del Sur' : 'Feline Capital'}
+              aria-label="Feline Capital"
             />
             <h1>Inicia sesión</h1>
             <p className="ing-texto">Facturación electrónica y contabilidad de tus empresas.</p>
@@ -1327,6 +1254,26 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
                 Entrar
               </Button>
             </Form>
+            {accesoDev && accesoDev.usuarios.length > 0 && (
+              <section className="ing-dev" aria-label="Acceso rápido de desarrollo">
+                <p className="ing-dev-titulo">Modo desarrollo</p>
+                <p className="ing-dev-clave">
+                  Clave: <code>{accesoDev.clave}</code> · pincha un usuario para entrar
+                </p>
+                {accesoDev.usuarios.map((u) => (
+                  <button
+                    key={u.email}
+                    type="button"
+                    className="ing-dev-usuario"
+                    disabled={enviando}
+                    onClick={() => ingresar({ email: u.email, clave: accesoDev.clave })}
+                  >
+                    <span className="ing-dev-nombre">{u.nombre}</span>
+                    <span className="ing-dev-detalle">{u.rol} · {u.email}</span>
+                  </button>
+                ))}
+              </section>
+            )}
           </main>
         </div>
       );
@@ -1345,7 +1292,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
         setSesion(null);
       };
       if (sesion === undefined) return <div className="ing" aria-busy="true" />;
-      if (!sesion) return <PantallaIngreso marca={'${isRocas ? 'rocas' : 'feline'}'} onIngreso={setSesion} />;
+      if (!sesion) return <PantallaIngreso onIngreso={setSesion} />;
       return <FelineApp sesion={sesion} onSalir={salir} onSesionExpirada={() => setSesion(null)} />;
     }
 
@@ -1503,17 +1450,12 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
 
       const primaryColor = STYLE_PRIMARIES[designStyle]?.[themeMode] || '#2b50ed';
       const surface = getSurfaceOverrides(designStyle, themeMode);
-      const isRocasStyle = designStyle === 'rocasdelsur';
       const isFelineStyle = designStyle === 'feline';
-      // Acentos de texto legibles en ambos modos (paleta Rocas del Sur / Feline Capital)
-      const textoAcento = isRocasStyle
-        ? (themeMode === 'dark' ? '#D8BB96' : '#7A5B3A')
-        : (themeMode === 'dark' ? '#5AA4F0' : '#0062C4');
-      const acentoSecundario = isRocasStyle
-        ? (themeMode === 'dark' ? '#E6BE7A' : '#5C432A')
-        : (themeMode === 'dark' ? '#7DB6F5' : '#0051A2');
-      const rdsActivo = isRocasStyle || isFelineStyle;
-      const rdsClaro = rdsActivo && themeMode === 'light';
+      // Acentos de texto legibles en ambos modos (paleta Feline Capital)
+      const textoAcento = themeMode === 'dark' ? '#5AA4F0' : '#0062C4';
+      const acentoSecundario = themeMode === 'dark' ? '#7DB6F5' : '#0051A2';
+      const marcaFeline = isFelineStyle;
+      const felineClaro = marcaFeline && themeMode === 'light';
 
       const algorithms = useMemo(() => {
         const list = [themeMode === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm];
@@ -2196,7 +2138,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
           key: 'name',
           render: (text, record) => (
             <Space direction="vertical" size={0}>
-              <Text strong className="mono-code" style={{ color: rdsActivo ? textoAcento : primaryColor }}>
+              <Text strong className="mono-code" style={{ color: marcaFeline ? textoAcento : primaryColor }}>
                 {text === '/' ? 'BORRADOR ("/")' : text}
               </Text>
               <Text type="secondary" style={{ fontSize: 12 }}>
@@ -2339,25 +2281,20 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
             token: {
               colorPrimary: primaryColor,
               borderRadius: borderRadius,
-              fontFamily: rdsActivo ? RDS_FUENTE : "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              ...(isRocasStyle
-                ? (rdsClaro ? ROCAS_TOKENS_CLARO : {})
-                : (rdsClaro ? RDS_TOKENS_CLARO : isFelineStyle ? RDS_TOKENS_OSCURO : {})),
+              fontFamily: marcaFeline ? FL_FUENTE : "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              ...(isFelineStyle ? (felineClaro ? FL_TOKENS_CLARO : FL_TOKENS_OSCURO) : {}),
             },
-            components: isRocasStyle
-              ? (rdsClaro ? ROCAS_COMPONENTES_CLARO : ROCAS_COMPONENTES_OSCURO)
-              : isFelineStyle
-              ? (rdsClaro ? RDS_COMPONENTES_CLARO : RDS_COMPONENTES_OSCURO)
+            components: isFelineStyle
+              ? (felineClaro ? FL_COMPONENTES_CLARO : FL_COMPONENTES_OSCURO)
               : undefined,
           }}
         >
           <Layout
             className={
-              rdsActivo
+              marcaFeline
                 ? [
-                    'rds-theme',
-                    rdsClaro ? 'rds-claro' : '',
-                    isRocasStyle ? 'rds-rocas' : '',
+                    'fl-theme',
+                    felineClaro ? 'fl-claro' : '',
                   ].filter(Boolean).join(' ')
                 : ''
             }
@@ -2381,61 +2318,23 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
                 zIndex: 100,
               }}
             >
-              {isRocasStyle ? (
-                <div style={{ padding: collapsed ? '18px 12px' : '20px 22px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span
-                    className="rds-logo-rocas"
-                    role="img"
-                    aria-label="Logo Rocas del Sur"
-                    style={{
-                      width: collapsed ? 40 : 52,
-                      height: collapsed ? 40 : 52,
-                      color: surface.forceDarkSider || themeMode === 'dark' ? '#D8BB96' : '#7A5B3A',
-                    }}
-                  />
-                  {!collapsed && (
-                    <div>
-                      <div className="rds-marca-nombre" style={{ fontWeight: 600, fontSize: 17, color: surface.forceDarkSider || themeMode === 'dark' ? '#F4EDE4' : '#1F1B17' }}>
-                        Rocas del Sur
-                      </div>
-                      <div style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: surface.forceDarkSider || themeMode === 'dark' ? '#B3A595' : '#6E6257' }}>
-                        Facturación · Feline
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div style={{ padding: collapsed ? '18px 12px' : '22px 24px 18px', display: 'flex', flexDirection: 'column', alignItems: collapsed ? 'center' : 'flex-start', gap: 8 }}>
-                  {isFelineStyle ? (
-                    <span
-                      className={collapsed ? 'rds-logo-feline rds-isotipo' : 'rds-logo-feline'}
-                      role="img"
-                      aria-label="Feline Capital"
-                      style={{
-                        width: collapsed ? 36 : 184,
-                        height: collapsed ? 48 : 64,
-                        color: '#FFFFFF',
-                      }}
-                    />
-                  ) : (
-                    <span
-                      className={collapsed ? 'rds-logo rds-isotipo' : 'rds-logo'}
-                      role="img"
-                      aria-label="Feline Capital"
-                      style={{
-                        width: collapsed ? 36 : 184,
-                        height: collapsed ? 48 : 64,
-                        color: surface.forceDarkSider || themeMode === 'dark' ? '#FFFFFF' : primaryColor,
-                      }}
-                    />
-                  )}
-                  {!collapsed && (
-                    <div style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: surface.forceDarkSider || themeMode === 'dark' ? '#8FB0D6' : '#4A5B70' }}>
-                      Facturación electrónica
-                    </div>
-                  )}
-                </div>
-              )}
+              <div style={{ padding: collapsed ? '18px 12px' : '22px 24px 18px', display: 'flex', flexDirection: 'column', alignItems: collapsed ? 'center' : 'flex-start', gap: 8 }}>
+                <span
+                  className={collapsed ? 'fl-logo fl-isotipo' : 'fl-logo'}
+                  role="img"
+                  aria-label="Feline Capital"
+                  style={{
+                    width: collapsed ? 36 : 184,
+                    height: collapsed ? 48 : 64,
+                    color: surface.forceDarkSider || themeMode === 'dark' ? '#FFFFFF' : primaryColor,
+                  }}
+                />
+                {!collapsed && (
+                  <div style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: surface.forceDarkSider || themeMode === 'dark' ? '#8FB0D6' : '#4A5B70' }}>
+                    Facturación electrónica
+                  </div>
+                )}
+              </div>
 
               <Menu
                 theme={surface.forceDarkSider || themeMode === 'dark' ? 'dark' : 'light'}
@@ -2515,6 +2414,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
             <Layout style={{ background: 'transparent' }}>
               {/* HEADER SUPERIOR */}
               <Header
+                className="fl-header"
                 style={{
                   background: surface.headerBg,
                   backdropFilter: designStyle === 'glassmorphic' ? 'blur(16px)' : undefined,
@@ -2532,14 +2432,14 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
                   overflowY: 'hidden',
                 }}
               >
-                <div className="rds-header-empresa">
+                <div className="fl-header-empresa">
                   <Text type="secondary" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                     Empresa
                   </Text>
                   <Select
                     value={activeTenantId}
                     onChange={(val) => setActiveTenantId(val)}
-                    style={{ width: '100%', maxWidth: 340, minWidth: 180 }}
+                    aria-label="Empresa activa"
                     options={dashboardData.tenants.map((t) => ({
                       value: t.id,
                       label: \`\${t.razonSocial} — RUT \${t.rut}\`,
@@ -2547,11 +2447,12 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
                   />
                 </div>
 
-                <div className="rds-header-acciones">
+                <div className="fl-header-acciones">
                   <Tooltip title={sesion.usuario.email}>
                     <span className="ing-usuario">{sesion.usuario.name}</span>
                   </Tooltip>
-                  <Button onClick={onSalir}>Cerrar sesión</Button>
+                  {/* Sin ícono: conserva su texto aunque los demás botones se compacten */}
+                  <Button className="fl-btn-texto" onClick={onSalir}>Cerrar sesión</Button>
                   <Tooltip title="Cargar certificado digital">
                   <Button
                     aria-label="Cargar certificado"
@@ -2638,6 +2539,10 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
               </Header>
 
               {/* CONTENIDO DINÁMICO DEL DASHBOARD */}
+              <div role="status" style={{ padding: '10px 24px', background: '#FFF7E6', color: '#613400', borderBottom: '1px solid #E8C789' }}>
+                Panel de demostración: los datos de estas pantallas están en memoria.{' '}
+                <a href="/finanzas" style={{ color: '#164E63', fontWeight: 600 }}>Abrir Finanzas y Contabilidad persistente</a>
+              </div>
               <Content style={activeTab === 'ventas-facturas-boletas' ? { margin: 0, minHeight: 0 } : { margin: '24px', minHeight: 280 }}>
                 {/* BANNER DEL CONTRIBUYENTE Y ACCESO RÁPIDO AL CERTIFICADO DIGITAL */}
                 {activeTenant && activeTab !== 'ventas-facturas-boletas' && (
@@ -2708,7 +2613,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
                         title="IVA Débito Fiscal Ventas (Cód. 538)"
                         value={rcvF29.f29.codigo538_TotalDebitos}
                         formatter={(val) => formatCLP(val)}
-                        valueStyle={{ color: rdsActivo ? textoAcento : primaryColor, fontWeight: 700 }}
+                        valueStyle={{ color: marcaFeline ? textoAcento : primaryColor, fontWeight: 700 }}
                       />
                       <Text type="secondary" style={{ fontSize: 12 }}>
                         Ventas Netas del Mes: {formatCLP(rcvF29.f29.totalVentasNeto)}
@@ -3618,7 +3523,7 @@ export function renderFelineAntdDashboardHtml(brand: 'feline' | 'rocas' = 'felin
                             children: (
                               <Descriptions bordered column={2} size="middle">
                                 <Descriptions.Item label="Código [538] Total Débitos Fiscales (IVA Ventas - NC Emitidas)">
-                                  <Text strong style={{ color: rdsActivo ? textoAcento : primaryColor, fontSize: 15 }}>
+                                  <Text strong style={{ color: marcaFeline ? textoAcento : primaryColor, fontSize: 15 }}>
                                     {formatCLP(rcvF29.f29.codigo538_TotalDebitos)}
                                   </Text>
                                 </Descriptions.Item>

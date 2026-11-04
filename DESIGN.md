@@ -1,6 +1,6 @@
 ---
 name: Feline Facturación
-description: Electronic invoicing panel for Feline Capital and Rocas del Sur; the document scene puts one SII document on a dark stage at a time.
+description: Electronic invoicing panel for Feline Capital (single brand; Rocas del Sur was unified into it); the document scene puts one SII document on a dark stage at a time.
 colors:
   void: "#0A0A0A"
   ink: "#121316"
@@ -26,9 +26,6 @@ colors:
   feline-blue: "#0062C4"
   feline-blue-dark: "#0073E6"
   feline-navy: "#001E3B"
-  rocas-earth: "#7A5B3A"
-  rocas-sand: "#D8BB96"
-  rocas-linen: "#F6F1EA"
 typography:
   display-total:
     fontFamily: "Antonio, Inter, sans-serif"
@@ -155,7 +152,7 @@ components:
 
 # Design System: Feline Facturación
 
-This file records two systems that live in the same panel. **The document scene** is the new world. It currently covers only the "Facturas y boletas" view (`EscenaDocumentos` in `src/ui/feline-antd-dashboard.html.ts`), and it is dark under both brands. **The incumbent brand shell** is everything else: the Ant Design 5 theme, sidebar, header and the other screens, themed per brand (Feline Capital and Rocas del Sur). The scene sits inside the incumbent shell. It never restyles the shell, and the shell never bleeds into it.
+This file records two systems that live in the same panel. **The document scene** is the new world. It currently covers only the "Facturas y boletas" view (`EscenaDocumentos` in `src/ui/feline-antd-dashboard.html.ts`), and it is always dark. **The incumbent brand shell** is everything else: the Ant Design 5 theme, sidebar, header and the other screens, themed with the Feline Capital brand. The scene sits inside the incumbent shell. It never restyles the shell, and the shell never bleeds into it.
 
 ## Overview
 
@@ -168,7 +165,7 @@ Density is high where the work is, in the queue: 360px of tight rows, each with 
 Colour is rationed. Sand is the only warm accent, and it marks only selection and the primary action. State hues appear only on SII states and on the queue's "pending" tally. Everything else is fog grey on ink.
 
 **Key Characteristics:**
-- Dark void stage in both brands; the white document sheet is the only light surface.
+- Dark void stage; the white document sheet is the only light surface.
 - Three columns: queue (360px), stage (fluid), action rail (104px).
 - Sand (`{colors.sand}`) is the single warm accent: primary action, selected row, active dot, focus ring, text selection.
 - State colour lives only on the SII state dot and its label.
@@ -205,8 +202,8 @@ The palette is a near-black ground with grey fog, one sand accent, and a five-to
 
 ### Incumbent brand shell (not part of the scene)
 - **Feline Capital**: primary **Feline Blue** (`{colors.feline-blue}` in light mode, `{colors.feline-blue-dark}` in dark mode), with a navy sidebar (`{colors.feline-navy}`) and #0073E6 for the selected menu item.
-- **Rocas del Sur**: primary **Earth** (`{colors.rocas-earth}` in light mode) or **Rocas Sand** (`{colors.rocas-sand}` in dark mode and for the selected menu item), with a **Linen** layout ground (`{colors.rocas-linen}`).
-- Both brands keep their own logo (a CSS mask) and sidebar. The scene does not change either one.
+- The Feline logo is a CSS mask (`.fl-logo`, isotype `.fl-isotipo` when the sidebar is collapsed). The scene does not change it or the sidebar.
+- Shell class prefix is `fl-` (Feline). The old `rds-` prefix and the Rocas del Sur theme (earth, sand, linen) were removed in the unification.
 
 ### Named Rules
 **The One Warm Light Rule.** Sand is the only accent in the scene, and it means "selected" or "do this next". If something is sand, it is either chosen or the primary action.
@@ -299,12 +296,12 @@ This is the bottom legend over the sheet's foot. On the left are the folio (Disp
 There are up to 11 dots on 18px hit areas. Inactive dots are fog, and the active dot is sand at 1.4× scale. A change of document enters with a 220ms `cubic-bezier(0.16, 1, 0.3, 1)` move of ±36px and a fade in from the direction of travel. Under reduced motion it becomes a 160ms fade.
 
 ### Navigation (incumbent)
-The brand sidebar (Ant Menu, 44px items, 14px radius, 18px line icons), the header company selector and the theme toggles all belong to the incumbent shell and are themed per brand. Feline Capital uses a navy sidebar with a blue selected item. Rocas del Sur uses a linen sidebar with a sand selected item.
+The brand sidebar (Ant Menu, 44px items, 14px radius, 18px line icons), the header company selector and the theme toggles all belong to the incumbent shell and use the Feline Capital brand: a navy sidebar with a blue selected item. Below 768px the header stacks into two rows (company selector, then an action row that scrolls on its own) so the page never scrolls sideways.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep the scene on void (`{colors.void}`) and ink (`{colors.ink}`) in both brands and both shell themes.
+- **Do** keep the scene on void (`{colors.void}`) and ink (`{colors.ink}`) in both shell themes (light and dark).
 - **Do** reserve sand for selection and the single next action. Its hover state is `{colors.sand-strong}`.
 - **Do** show SII state as a coloured dot plus a plain-Spanish label and, where it helps, a one-line reason ("Está timbrado; envíalo al SII.").
 - **Do** set every amount, RUT and quantity in tabular figures.

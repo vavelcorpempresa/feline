@@ -117,14 +117,11 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
   // --------------------------------------------------------------------------
   // 0. DASHBOARD INTERACTIVO ANTD MULTIPURPOSE EN `/` Y `/dashboard`
   // --------------------------------------------------------------------------
-  const currentBrand = (process.env.APP_BRAND === 'rocas' ? 'rocas' : 'feline') as 'feline' | 'rocas';
-
   app.get('/', async (request, reply) => {
     const accept = request.headers.accept || '';
     if (accept.includes('application/json') && !accept.includes('text/html')) {
       return {
-        system: currentBrand === 'rocas' ? 'Rocas del Sur' : 'Feline',
-        brand: currentBrand,
+        system: 'Feline',
         description:
           'Sistema de Facturación Electrónica Multiempresa (Odoo account.move + l10n_cl + DTE SII Chile)',
         version: VERSION,
@@ -139,20 +136,16 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
         ],
       };
     }
-    return reply.type('text/html; charset=utf-8').send(renderPanel(currentBrand));
+    return reply.type('text/html; charset=utf-8').send(renderPanel());
   });
 
   app.get('/dashboard', async (_request, reply) => {
-    return reply.type('text/html; charset=utf-8').send(renderPanel(currentBrand));
+    return reply.type('text/html; charset=utf-8').send(renderPanel());
   });
 
-  app.get('/rocas', async (_request, reply) => {
-    return reply.type('text/html; charset=utf-8').send(renderPanel('rocas'));
-  });
-
-  app.get('/feline', async (_request, reply) => {
-    return reply.type('text/html; charset=utf-8').send(renderPanel('feline'));
-  });
+  // Rocas del Sur se unificó en Feline: las direcciones antiguas llevan al panel único
+  app.get('/rocas', async (_request, reply) => reply.redirect('/', 301));
+  app.get('/feline', async (_request, reply) => reply.redirect('/', 301));
 
   app.get('/api/v1/status', async () => ({
     system: 'Feline',
