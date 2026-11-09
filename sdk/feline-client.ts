@@ -53,8 +53,9 @@ export interface ReferenciaDocumento {
 
 export interface DocumentoRequest {
   tipoDte: TipoDte;
-  /** Id del documento en tu proyecto (ej. pedido). Se puede usar para buscarlo después. */
+  /** Total CLP que cobró tu sistema de pagos. Si no coincide con el total tributario, 422 sin consumir folio. */
   montoConfirmado?: number;
+  /** Id del documento en tu proyecto (ej. pedido). Se puede usar para buscarlo después. */
   referenciaExterna?: string;
   fechaEmision?: string;
   fechaVencimiento?: string;

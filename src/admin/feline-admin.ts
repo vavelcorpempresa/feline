@@ -7,7 +7,7 @@ import { CafTedService } from '../services/caf-ted.service';
 import { XmlDsigSignerService } from '../services/xmldsig-signer.service';
 import { FelineLiveSandboxStore } from '../services/feline-live-sandbox.service';
 import { generarApiKey } from '../api/norma/claves';
-import { SCOPES, Scope } from '../api/v1';
+import { SCOPES, Scope } from '../api/v1/permisos';
 import { CodigoTipoDTE } from '../types/sii-dte.types';
 import { normalizeAndValidateRut } from '../utils/sii-normative.utils';
 import { urlPublica } from '../config';

@@ -9,7 +9,7 @@ import type { WebhookService } from '../../services/webhook.service';
 // Reglas que el registro hace cumplir al iniciar (ver docs/API_NORMA.md):
 //   1. `id` en minúsculas, único; sus rutas viven bajo /v1/<id>.
 //   2. Cada permiso que declara tiene la forma `recurso:accion`.
-//   3. Cada ruta declara su acceso: `scope` (permiso), `soloClave` o `publico`.
+//   3. Cada ruta declara su acceso: `scope` (permiso), `soloClave`, `plataforma` o `publico`.
 //   4. Cada ruta aparece en el fragmento OpenAPI del módulo.
 // ============================================================================
 
@@ -61,6 +61,8 @@ declare module 'fastify' {
     soloClave?: boolean;
     /** Ruta sin clave (salud, catálogo, especificación). */
     publico?: boolean;
+    /** Operación de la plataforma (alta de empresas y claves): exige el token FELINE_ADMIN_TOKEN. */
+    plataforma?: boolean;
   }
 }
 

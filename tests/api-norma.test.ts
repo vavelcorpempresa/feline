@@ -22,7 +22,7 @@ describe('Norma de módulos de la API REST', () => {
     expect(res.statusCode).toBe(200);
     const catalogo = res.json();
     expect(catalogo.version).toBe('v1');
-    expect(catalogo.modulos.map((m: { id: string }) => m.id)).toEqual(['sistema', 'empresa', 'documentos', 'webhooks']);
+    expect(catalogo.modulos.map((m: { id: string }) => m.id)).toEqual(['sistema', 'empresa', 'documentos', 'webhooks', 'plataforma']);
 
     const documentos = catalogo.modulos.find((m: { id: string }) => m.id === 'documentos');
     expect(documentos.permisos.map((p: { permiso: string }) => p.permiso)).toEqual(['documentos:emitir', 'documentos:leer']);
@@ -107,7 +107,7 @@ describe('Norma de módulos de la API REST', () => {
 
     it('Ruta sin declarar su acceso', async () => {
       const m = definirModulo({ ...base, id: 'prueba', prefijo: '/prueba', registrar: (a) => void a.get('', async () => ({})) });
-      await expect(montar(m)).rejects.toThrow(/exactamente uno de scope, soloClave o publico/);
+      await expect(montar(m)).rejects.toThrow(/exactamente uno de scope, soloClave, plataforma o publico/);
     });
 
     it('Ruta con un permiso que ningún módulo declara', async () => {

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { hashApiKey } from './claves';
@@ -16,7 +17,7 @@ import { ContextoApi, ModuloApi } from './modulo';
 export interface RutaCatalogo {
   metodo: string;
   ruta: string;
-  acceso: 'publico' | 'clave' | 'permiso';
+  acceso: 'publico' | 'clave' | 'permiso' | 'plataforma';
   permiso?: string;
 }
 
@@ -36,6 +37,13 @@ export interface Catalogo {
 
 const ID_MODULO = /^[a-z][a-z0-9-]*$/;
 const PERMISO = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/;
+
+/** Compara el token de plataforma en tiempo constante (sin revelar su largo). */
+function tokenPlataformaValido(recibido: string, esperado: string): boolean {
+  const a = crypto.createHash('sha256').update(recibido).digest();
+  const b = crypto.createHash('sha256').update(esperado).digest();
+  return recibido.length > 0 && crypto.timingSafeEqual(a, b);
+}
 
 /** Ruta Fastify (`/v1/documentos/:id`) en formato OpenAPI (`/v1/documentos/{id}`). */
 export function rutaOpenApi(ruta: string): string {
@@ -101,9 +109,18 @@ export function registrarModulos(
       api.addHook('onRequest', async (request: FastifyRequest) => {
         const config = request.routeOptions.config;
         if (config.publico) return;
+        const match = (request.headers.authorization ?? '').match(/^Bearer\s+(\S+)$/i);
+
+        if (config.plataforma) {
+          const token = process.env.FELINE_ADMIN_TOKEN;
+          if (!token) throw new ApiError(503, 'Operaciones de plataforma deshabilitadas: falta FELINE_ADMIN_TOKEN en Feline.');
+          if (!match || !tokenPlataformaValido(match[1], token)) {
+            throw new ApiError(401, 'Token de plataforma inválido');
+          }
+          return;
+        }
         if (!config.scope && !config.soloClave) return; // 404 de rutas inexistentes
 
-        const match = (request.headers.authorization ?? '').match(/^Bearer\s+(\S+)$/i);
         if (!match) throw new ApiError(401, 'Falta la cabecera Authorization: Bearer <clave>');
         const client = await ctx.prisma.apiClient.findUnique({
           where: { keyHash: hashApiKey(match[1]) },
@@ -155,11 +172,16 @@ export function registrarModulos(
             scope.addHook('onRoute', (route) => {
               const metodos = (Array.isArray(route.method) ? route.method : [route.method]).filter((m) => m !== 'HEAD');
               if (metodos.length === 0) return;
-              const config = (route.config ?? {}) as { scope?: string; soloClave?: boolean; publico?: boolean };
-              const declarados = [config.scope, config.soloClave, config.publico].filter(Boolean).length;
+              const config = (route.config ?? {}) as {
+                scope?: string;
+                soloClave?: boolean;
+                publico?: boolean;
+                plataforma?: boolean;
+              };
+              const declarados = [config.scope, config.soloClave, config.publico, config.plataforma].filter(Boolean).length;
               const nombre = `${metodos.join(',')} ${route.url}`;
               if (declarados !== 1) {
-                throw new Error(`Norma API: ${nombre} debe declarar exactamente uno de scope, soloClave o publico.`);
+                throw new Error(`Norma API: ${nombre} debe declarar exactamente uno de scope, soloClave, plataforma o publico.`);
               }
               if (config.scope && !permisosValidos.has(config.scope)) {
                 throw new Error(`Norma API: ${nombre} usa el permiso "${config.scope}", que ningún módulo declara.`);
@@ -171,7 +193,7 @@ export function registrarModulos(
                 rutas.push({
                   metodo,
                   ruta: route.url,
-                  acceso: config.publico ? 'publico' : config.soloClave ? 'clave' : 'permiso',
+                  acceso: config.publico ? 'publico' : config.plataforma ? 'plataforma' : config.soloClave ? 'clave' : 'permiso',
                   ...(config.scope ? { permiso: config.scope } : {}),
                 });
               }

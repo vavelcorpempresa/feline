@@ -4,16 +4,38 @@ Esta norma rige cómo Feline expone su API a los otros sistemas (FUGAR y los que
 
 Catálogo en vivo: `GET /v1/modulos` · Especificación: `GET /v1/openapi.json` · Cliente: [`sdk/feline-client.ts`](../sdk/feline-client.ts)
 
-## 1. Conectar un sistema nuevo
+## 1. Conectar una empresa y un sistema nuevos
 
-1. Crear su clave de proyecto, ligada a una empresa emisora y con los permisos mínimos que necesita:
-   ```bash
-   npm run admin -- proyecto:conectar --rut <RUT> --nombre "Mi sistema" \
-     --permisos documentos:emitir,documentos:leer --webhook-url https://mi-sistema/api/feline/webhook
-   ```
-   La clave (`flk_...`) y el secreto del webhook se muestran una sola vez. En Feline solo queda su hash.
-2. Guardarla en el servidor del sistema (nunca en el navegador): `FELINE_API_URL`, `FELINE_API_KEY`, `FELINE_WEBHOOK_SECRET`.
-3. Copiar `sdk/feline-client.ts` al sistema y verificar la conexión al iniciar:
+Todo el alta se hace por API con el módulo `plataforma`, usando el token de plataforma (`FELINE_ADMIN_TOKEN`, definido en el servidor de Feline y solo por HTTPS). Son cuatro llamadas:
+
+```bash
+F=https://feline.tudominio.cl; T="Authorization: Bearer $FELINE_ADMIN_TOKEN"
+
+# 1. Empresa emisora (si el RUT ya existe, actualiza sus datos)
+curl -X POST $F/v1/plataforma/empresas -H "$T" -H 'Content-Type: application/json' -d '{
+  "rut": "76192083-9", "razonSocial": "MI EMPRESA SPA", "giro": "Venta al por menor", "acteco": [479100],
+  "direccionOrigen": "Av. Siempre Viva 123", "comunaOrigen": "Providencia", "ciudadOrigen": "Santiago",
+  "fchResol": "2026-01-15", "nroResol": 0, "rutEnvia": "12345678-5", "environment": "CERTIFICACION" }'
+
+# 2. Firma electrónica (.pfx en base64). Se guarda cifrada.
+curl -X POST $F/v1/plataforma/empresas/76192083-9/certificado -H "$T" -H 'Content-Type: application/json' \
+  -d "{\"pfxBase64\": \"$(base64 -i firma.pfx)\", \"clave\": \"****\"}"
+
+# 3. Folios CAF descargados del SII (uno por tipo de documento)
+curl -X POST $F/v1/plataforma/empresas/76192083-9/caf -H "$T" -H 'Content-Type: application/json' \
+  -d "$(jq -Rs '{xml: .}' FoliosSII33.xml)"
+
+# 4. Clave del sistema que emitirá, con los permisos mínimos que necesita
+curl -X POST $F/v1/plataforma/empresas/76192083-9/proyectos -H "$T" -H 'Content-Type: application/json' \
+  -d '{ "nombre": "Mi sistema", "webhookUrl": "https://mi-sistema/api/feline/webhook",
+        "permisos": ["empresa:leer", "documentos:emitir", "documentos:leer"] }'
+```
+
+La respuesta del paso 4 trae `variables` con `FELINE_API_URL`, `FELINE_API_KEY` y `FELINE_WEBHOOK_SECRET`, listas para el `.env` del sistema. La clave (`flk_...`) y el secreto se muestran una sola vez: en Feline solo queda el hash de la clave. Lo mismo se puede hacer por consola con `npm run admin` (`empresa:crear`, `certificado:cargar`, `caf:cargar`, `proyecto:conectar`).
+
+Después, en el sistema:
+1. Guardar esas variables en el servidor del sistema (nunca en el navegador).
+2. Copiar `sdk/feline-client.ts` al sistema y verificar la conexión al iniciar:
    ```ts
    const feline = new FelineClient({ baseUrl: process.env.FELINE_API_URL!, apiKey: process.env.FELINE_API_KEY! });
    const { proyecto, empresa, permisos } = await feline.yo();
@@ -31,6 +53,7 @@ La API se organiza en módulos. Cada uno agrupa un recurso y vive en `src/api/v1
 | `empresa` | `GET /v1/empresa` | `empresa:leer` |
 | `documentos` | `POST /v1/documentos`, `GET /v1/documentos`, `GET /v1/documentos/:id`, `.../pdf`, `.../xml` | `documentos:emitir`, `documentos:leer` |
 | `webhooks` | `POST /v1/webhooks/prueba` (usa `empresa:leer`) | — |
+| `plataforma` | `GET/POST /v1/plataforma/empresas`, `.../empresas/:rut/certificado`, `.../caf`, `.../proyectos`, `/v1/plataforma/proyectos/:id/rotar-clave`, `.../webhook`, `.../revocar` (token de plataforma) | — |
 
 ### Reglas que el registro verifica al iniciar
 
@@ -39,6 +62,7 @@ La API se organiza en módulos. Cada uno agrupa un recurso y vive en `src/api/v1
 3. Cada ruta declara **exactamente uno** de estos accesos:
    - `scope: '<permiso>'`: exige una clave con ese permiso (lo normal),
    - `soloClave: true`: exige una clave válida, sin permiso específico,
+   - `plataforma: true`: exige el token de plataforma `FELINE_ADMIN_TOKEN` (alta de empresas y claves). Sin ese token configurado, responde 503,
    - `publico: true`: sin clave (solo salud, catálogo y especificación).
 4. Cada ruta está en el fragmento OpenAPI de su módulo, por lo que la especificación nunca queda desfasada del código.
 5. La versión del módulo es semver.
@@ -131,6 +155,7 @@ Feline avisa los cambios de estado con un `POST` a la URL del proyecto. El cuerp
 ## 7. Seguridad
 
 - Las claves van solo en el servidor del sistema que llama, nunca en el navegador ni en el repositorio.
+- El token de plataforma no se entrega a ningún sistema conectado: solo lo usa quien da de alta empresas. Las rutas `plataforma` reciben certificados y sus claves, por lo que solo se usan por HTTPS.
 - Una clave pertenece a una empresa: todo lo que lee o escribe queda limitado a esa empresa.
 - Se asignan los permisos mínimos. Un sistema que solo consulta no recibe `documentos:emitir`.
 - Para revocar una clave: `npm run admin -- proyecto:revocar --id <id>`. El efecto es inmediato. Para cambiar la clave de un proyecto se usa `proyecto:rotar-clave`.
