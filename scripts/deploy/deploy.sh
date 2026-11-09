@@ -15,7 +15,7 @@ done
 
 if ! docker image inspect "feline-app:$V" >/dev/null 2>&1; then
   echo "== Compilando feline-app:$V (2 a 4 minutos)"
-  git rev-parse --short HEAD 2>/dev/null | sed 's/^/   commit /' || true
+  { git rev-parse --short HEAD 2>/dev/null || cat .commit 2>/dev/null; } | sed 's/^/   commit /' || true
   dc build app
 fi
 

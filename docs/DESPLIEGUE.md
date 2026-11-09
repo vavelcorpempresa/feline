@@ -10,7 +10,7 @@ Feline se instala igual que FUGAR: un Droplet de DigitalOcean con Docker y Caddy
 | Base de datos | Managed PostgreSQL 17, 1 GB RAM, 1 nodo | ~US$15/mes |
 | Respaldos | El mismo Space de FUGAR (carpeta `feline/`) | ya pagado |
 
-Los precios son de referencia: confírmalos al crear los recursos. Todo va en la **misma región que FUGAR** (NYC), para que FUGAR y Feline se hablen con poca latencia.
+Los precios son de referencia: confírmalos al crear los recursos. Todo va en la **misma región que FUGAR** (NYC1), para que FUGAR y Feline se hablen con poca latencia.
 
 **Por qué esta configuración:**
 
@@ -41,9 +41,11 @@ El script crea el usuario `deploy`, configura el firewall (solo SSH, 80 y 443), 
 
 ## 4. Código y configuración
 
+El repositorio es privado, así que el código se sube desde tu Mac (solo lo que está en git, en el commit indicado):
+
 ```bash
+scripts/deploy/subir.sh deploy@<IP>          # desde la carpeta de Feline en tu Mac
 ssh deploy@<IP>
-git clone https://github.com/vavelcorpempresa/feline.git feline   # repositorio privado: usa una deploy key de solo lectura
 cd feline
 cp .env.production.example .env.production && chmod 600 .env.production
 nano .env.production
@@ -69,7 +71,7 @@ curl https://feline.<tu-dominio>/v1/salud      # {"estado":"ok", ...}
 curl https://feline.<tu-dominio>/v1/modulos
 ```
 
-**Actualizar:** `git pull && scripts/deploy/deploy.sh <versión-nueva>`.
+**Actualizar:** en tu Mac `scripts/deploy/subir.sh deploy@<IP>`, y en el servidor `scripts/deploy/deploy.sh <versión-nueva>`.
 **Volver atrás:** `scripts/deploy/deploy.sh <versión-anterior>` (la imagen anterior sigue en el Droplet). Si la versión nueva traía migraciones, la base no se revierte: revisa antes de volver atrás.
 
 ## 6. Respaldos
