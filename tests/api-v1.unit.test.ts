@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { estadoFinalDesdeSii } from '../src/services/dte-dispatcher.service';
 import { esperaReintentoMs, firmarWebhook, WebhookService } from '../src/services/webhook.service';
 import { ApiDocumentosService, DocumentoRequestSchema } from '../src/services/api-documentos.service';
-import { generarApiKey, hashApiKey } from '../src/api/v1/documentos.routes';
+import { generarApiKey, hashApiKey } from '../src/api/norma/claves';
 
 describe('API v1 - piezas unitarias', () => {
   it('Traduce el resultado del SII a estado final del documento', () => {

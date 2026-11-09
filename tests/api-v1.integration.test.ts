@@ -365,7 +365,7 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
     it('SDK: listado paginado recorre todos los documentos del proyecto', async () => {
       const feline = new FelineClient({ baseUrl, apiKey: clave });
       const total = await prisma.documentoDTE.count({
-        where: { apiClient: { keyHash: (await import('../src/api/v1/documentos.routes')).hashApiKey(clave) } },
+        where: { apiClient: { keyHash: (await import('../src/api/norma/claves')).hashApiKey(clave) } },
       });
       const primera = await feline.listar({ limite: 3 });
       expect(primera.datos).toHaveLength(3);

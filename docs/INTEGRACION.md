@@ -7,6 +7,8 @@ Feline es el motor de facturación electrónica (DTE) central. Cualquier proyect
 
 La especificación completa está en `GET {FELINE_API_URL}/v1/openapi.json` (no requiere clave). Con ella se puede generar un cliente en cualquier lenguaje.
 
+La API está organizada en módulos y sigue una norma común (errores, permisos, idempotencia y versiones): ver [API_NORMA.md](API_NORMA.md). El catálogo de módulos está en `GET {FELINE_API_URL}/v1/modulos` y la verificación de la clave en `GET {FELINE_API_URL}/v1/yo`.
+
 > La clave da acceso a emitir documentos tributarios a nombre de la empresa. Úsala **solo en el servidor** (rutas API, server actions, workers); nunca en código que llegue al navegador.
 
 ## 1. Registrar el proyecto (en Feline)

@@ -6,6 +6,8 @@ import { DteBillingOrchestratorService } from './dte-orchestrator.service';
 import { DteXmlBuilderService } from './dte-xml-builder.service';
 import { formatSiiTimestamp, normalizeAndValidateRut } from '../utils/sii-normative.utils';
 import { urlPublica } from '../config';
+import { ApiError } from '../api/norma/errores';
+import type { ApiClientContext } from '../api/norma/modulo';
 
 // ============================================================================
 // API DE DOCUMENTOS (v1) PARA INTEGRACIONES EXTERNAS (ej. FUGAR Marketplace)
@@ -69,23 +71,9 @@ export const DocumentoRequestSchema = z.object({
 export type DocumentoRequest = z.infer<typeof DocumentoRequestSchema>;
 
 /** Error de negocio con código HTTP explícito (se responde tal cual al cliente). */
-export class ApiError extends Error {
-  constructor(
-    public readonly statusCode: number,
-    message: string,
-    public readonly detalles?: unknown
-  ) {
-    super(message);
-  }
-}
-
-export interface ApiClientContext {
-  id: string;
-  nombre: string;
-  tenantId: string;
-  tenantRut: string;
-  scopes: string[];
-}
+// La forma de los errores y del proyecto conectado la define la norma de la API
+export { ApiError } from '../api/norma/errores';
+export type { ApiClientContext } from '../api/norma/modulo';
 
 export const ListarQuerySchema = z.object({
   tipoDte: z.coerce.number().int().optional(),

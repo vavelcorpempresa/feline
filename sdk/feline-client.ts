@@ -10,7 +10,8 @@
  * Webhook (ruta POST de tu proyecto):
  *   const evento = parsearWebhookFeline(await req.text(), req.headers.get('x-firma'), process.env.FELINE_WEBHOOK_SECRET!);
  *
- * Contrato completo: GET {FELINE_API_URL}/v1/openapi.json
+ * Contrato completo: GET {FELINE_API_URL}/v1/openapi.json · Módulos y permisos: GET {FELINE_API_URL}/v1/modulos
+ * Norma de la API: docs/API_NORMA.md (forma de errores, idempotencia, versiones).
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
@@ -124,14 +125,56 @@ export type EventoWebhook =
 /** Estados definitivos: el documento ya no cambiará. */
 export const ESTADOS_FINALES: readonly EstadoDocumento[] = ['ACEPTADO', 'ACEPTADO_CON_REPARO', 'RECHAZADO', 'ANULADO'];
 
+export interface Identidad {
+  proyecto: { id: string; nombre: string };
+  empresa: { id: string; rut: string };
+  permisos: string[];
+}
+
+export interface CatalogoModulos {
+  version: string;
+  modulos: Array<{
+    id: string;
+    nombre: string;
+    descripcion: string;
+    version: string;
+    permisos: Array<{ permiso: string; descripcion: string }>;
+    rutas: Array<{ metodo: string; ruta: string; acceso: 'publico' | 'clave' | 'permiso'; permiso?: string }>;
+  }>;
+}
+
+export interface Salud {
+  estado: 'ok' | 'degradado';
+  version: string;
+  baseDatos: 'ok' | 'error';
+  hora: string;
+}
+
 // ---------------------------------------------------------------------------
 // Errores
 // ---------------------------------------------------------------------------
+/** Códigos estables de error de la norma (ver docs/API_NORMA.md). */
+export type CodigoError =
+  | 'SOLICITUD_INVALIDA'
+  | 'NO_AUTENTICADO'
+  | 'SIN_PERMISO'
+  | 'NO_ENCONTRADO'
+  | 'CONFLICTO'
+  | 'TIPO_NO_SOPORTADO'
+  | 'REGLA_DE_NEGOCIO'
+  | 'DEMASIADAS_SOLICITUDES'
+  | 'NO_DISPONIBLE'
+  | 'ERROR_INTERNO'
+  | 'SIN_CONEXION';
+
 export class FelineApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
-    public readonly detalles?: unknown
+    public readonly detalles?: unknown,
+    public readonly codigo?: CodigoError,
+    /** Igual a la cabecera x-request-id: sirve para buscar la solicitud en el registro de Feline. */
+    public readonly requestId?: string
   ) {
     super(message);
     this.name = 'FelineApiError';
@@ -215,6 +258,25 @@ export class FelineClient {
     return this.json('GET', '/v1/empresa');
   }
 
+  /** Proyecto, empresa y permisos de la clave configurada (para verificar la conexión al iniciar). */
+  yo(): Promise<Identidad> {
+    return this.json('GET', '/v1/yo');
+  }
+
+  /** Módulos disponibles en Feline, con sus permisos y rutas. */
+  modulos(): Promise<CatalogoModulos> {
+    return this.json('GET', '/v1/modulos');
+  }
+
+  /** Estado del servicio y su base de datos. No reintenta: un 503 se devuelve como respuesta. */
+  async salud(): Promise<Salud> {
+    const res = await this.fetchImpl(`${this.baseUrl}/v1/salud`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(this.opciones.timeoutMs ?? 30_000),
+    });
+    return (await res.json()) as Salud;
+  }
+
   /** Pide a Feline enviar un evento `webhook.prueba` a tu webhook y devuelve si llegó. */
   probarWebhook(): Promise<{ entregado: boolean; url?: string; error?: string }> {
     return this.json('POST', '/v1/webhooks/prueba');
@@ -260,7 +322,12 @@ export class FelineClient {
           signal: AbortSignal.timeout(this.opciones.timeoutMs ?? 30_000),
         });
       } catch (err) {
-        ultimoError = new FelineApiError(0, `No se pudo conectar con Feline (${this.baseUrl}): ${(err as Error).message}`);
+        ultimoError = new FelineApiError(
+          0,
+          `No se pudo conectar con Feline (${this.baseUrl}): ${(err as Error).message}`,
+          undefined,
+          'SIN_CONEXION'
+        );
         if (intento < maxIntentos) await this.espera(intento);
         continue;
       }
@@ -269,14 +336,16 @@ export class FelineClient {
 
       let mensaje = `HTTP ${res.status}`;
       let detalles: unknown;
+      let codigo: CodigoError | undefined;
       try {
-        const data = (await res.json()) as { error?: string; detalles?: unknown };
+        const data = (await res.json()) as { error?: string; detalles?: unknown; codigo?: CodigoError };
         mensaje = data.error ?? mensaje;
         detalles = data.detalles;
+        codigo = data.codigo;
       } catch {
         /* cuerpo no JSON */
       }
-      ultimoError = new FelineApiError(res.status, mensaje, detalles);
+      ultimoError = new FelineApiError(res.status, mensaje, detalles, codigo, res.headers.get('x-request-id') ?? undefined);
       if (!ultimoError.reintentable || intento === maxIntentos) throw ultimoError;
       await this.espera(intento);
     }

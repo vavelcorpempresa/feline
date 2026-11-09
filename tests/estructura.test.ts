@@ -78,5 +78,6 @@ describe('Estructura del proyecto', () => {
     expect(raiz.json()).toMatchObject({ system: 'Feline' });
     expect(raiz.json().brand).toBeUndefined();
     await app.close();
-  });
+    // Compila el panel y levanta el servidor completo: con el equipo cargado supera los 5 s por defecto
+  }, 20_000);
 });

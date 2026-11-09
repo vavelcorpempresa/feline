@@ -4,7 +4,7 @@
 // Mantener VERSION igual a "version" de package.json (lo verifica una prueba).
 // ============================================================================
 
-export const VERSION = '1.3.0';
+export const VERSION = '1.4.0';
 
 /** Puerto de escucha (`PORT`), 3004 por defecto. Se lee al usarse para respetar el entorno vigente. */
 export function puerto(): number {
