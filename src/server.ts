@@ -49,6 +49,13 @@ function tokenAdminValido(header: string | undefined, esperado: string): boolean
   return recibido.length > 0 && crypto.timingSafeEqual(a, b);
 }
 
+/** FELINE_TRUST_PROXY: vacío = no confiar; "true" o una lista de redes/IP (ej. "loopback,uniquelocal"). */
+function confianzaProxy(): boolean | string {
+  const v = (process.env.FELINE_TRUST_PROXY ?? '').trim();
+  if (!v || v === 'false') return false;
+  return v === 'true' ? true : v;
+}
+
 export interface BuildAppOptions {
   /** Conexión al SII: 'real' (maullin/palena según el ambiente del tenant) o 'simulado' (solo desarrollo). */
   siiModo?: SiiModo;
@@ -66,6 +73,9 @@ declare module 'fastify' {
 export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance {
   const app = Fastify({
     logger: true,
+    // Detrás de Caddy: tomar la IP real del visitante de X-Forwarded-For (límite de intentos de login).
+    // Solo confiar en el proxy si Feline no es accesible directamente (en Docker: puerto en 127.0.0.1).
+    trustProxy: confianzaProxy(),
   });
 
   app.register(cors);

@@ -1,0 +1,22 @@
+# HTTPS para Feline. DOMAIN viene de .env.production (docker-compose.yml). Caddy obtiene y renueva
+# solo el certificado de Let's Encrypt; el dominio debe apuntar al Droplet antes del primer arranque.
+# Caddy reemplaza X-Forwarded-For con la IP real del visitante (la usa el límite de intentos de login).
+# No pongas otro proxy delante (CDN, balanceador) sin declarar sus IPs en `trusted_proxies`.
+(seguridad) {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+}
+
+{$DOMAIN} {
+	import seguridad
+	# Certificados .pfx y archivos CAF en base64 (módulo plataforma) caben con holgura
+	request_body {
+		max_size 2MB
+	}
+	reverse_proxy app:3004
+}

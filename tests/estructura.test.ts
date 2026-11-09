@@ -64,6 +64,19 @@ describe('Estructura del proyecto', () => {
     expect(renderFelineAntdDashboardHtml()).toContain('<script type="text/babel">');
   });
 
+  it('Cada modelo de Prisma tiene su tabla en las migraciones (un servidor nuevo usa migrate deploy, no db push)', () => {
+    const schema = fs.readFileSync('prisma/schema.prisma', 'utf8');
+    const migraciones = fs
+      .readdirSync('prisma/migrations', { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => fs.readFileSync(`prisma/migrations/${d.name}/migration.sql`, 'utf8'))
+      .join('\n');
+    const faltan = [...schema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)]
+      .map(([, modelo, cuerpo]) => cuerpo.match(/@@map\("([^"]+)"\)/)?.[1] ?? modelo)
+      .filter((tabla) => !migraciones.includes(`CREATE TABLE "${tabla}"`));
+    expect(faltan, 'Crea la migración con prisma migrate diff (docs/DESPLIEGUE.md)').toEqual([]);
+  });
+
   it('Rocas del Sur quedó unificado en Feline: una sola marca y las rutas antiguas redirigen', async () => {
     const html = renderPanel();
     expect(html).not.toMatch(/Rocas del Sur|rocasdelsur|rds-/);

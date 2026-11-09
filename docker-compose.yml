@@ -1,0 +1,53 @@
+# Feline en un Droplet de DigitalOcean (guía: docs/DESPLIEGUE.md).
+# Úsalo siempre a través de scripts/deploy/*.sh, que pasan --env-file .env.production.
+services:
+  app:
+    build: .
+    image: feline-app:${APP_VERSION:-latest}
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      # Solo Caddy llega a la app (puerto en loopback): se confía en su X-Forwarded-For
+      FELINE_TRUST_PROXY: uniquelocal
+    ports:
+      # Solo loopback: el tráfico público entra por Caddy, nunca directo.
+      - "127.0.0.1:3004:3004"
+    stop_grace_period: 30s
+    mem_limit: 1g
+
+  # HTTPS automático (Let's Encrypt) delante de la app. Configuración: deploy/Caddyfile
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      DOMAIN: ${DOMAIN:?Define DOMAIN en .env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Migraciones controladas (scripts/deploy/deploy.sh). Nunca borran datos.
+  migrate:
+    profiles: ["ops"]
+    image: feline-app:${APP_VERSION:-latest}
+    env_file: .env.production
+    entrypoint: []
+    command: ["npx", "prisma", "migrate", "deploy"]
+
+  # Consola de administración (scripts/deploy/admin.sh): empresas, certificados, CAF y proyectos.
+  admin:
+    profiles: ["ops"]
+    image: feline-app:${APP_VERSION:-latest}
+    env_file: .env.production
+    entrypoint: ["node", "dist/admin/feline-admin.js"]
+
+volumes:
+  caddy_data:
+    name: feline_caddy_data
+  caddy_config:
+    name: feline_caddy_config
