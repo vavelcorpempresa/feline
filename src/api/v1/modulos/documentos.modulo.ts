@@ -1,14 +1,18 @@
+import { z } from 'zod';
 import { DtePdfService } from '../../../services/dte-pdf.service';
+import { xmlDescargable } from '../../../services/dte-archivos';
 import { ApiError } from '../../norma/errores';
 import { definirModulo } from '../../norma/modulo';
 import { error, json, paramId, ref } from '../../norma/openapi';
+
+const CorreoSchema = z.object({ correo: z.string().trim().email('Correo inválido').max(120).optional() }).strict();
 
 export const moduloDocumentos = definirModulo({
   id: 'documentos',
   nombre: 'Documentos tributarios',
   descripcion:
     'Emisión idempotente de facturas, boletas y notas (33, 34, 39, 41, 56, 61), su estado ante el SII, PDF y XML.',
-  version: '1.0.0',
+  version: '1.1.0',
   prefijo: '/documentos',
   permisos: {
     'documentos:emitir': 'Emitir documentos tributarios a nombre de la empresa de la clave.',
@@ -75,6 +79,25 @@ export const moduloDocumentos = definirModulo({
           summary: 'Representación impresa (PDF con timbre PDF417)',
           parameters: [paramId],
           responses: { '200': { description: 'application/pdf' }, '404': error('No encontrado') },
+        },
+      },
+      '/v1/documentos/{id}/correo': {
+        post: {
+          summary: 'Enviar (o reenviar) el PDF y el XML por correo al receptor',
+          description:
+            'El documento se envía solo cuando el SII lo acepta: el correo de `receptor.correo` sale automáticamente. ' +
+            'Esta ruta pide un envío nuevo, opcionalmente a otra dirección. El estado queda en `correo` del documento.',
+          parameters: [paramId],
+          requestBody: {
+            required: false,
+            content: json({ type: 'object', properties: { correo: { type: 'string', format: 'email', maxLength: 120 } } }),
+          },
+          responses: {
+            '202': { description: 'Envío en cola', content: json(ref('Documento')) },
+            '400': error('Correo inválido'),
+            '404': error('No encontrado'),
+            '422': error('El documento aún no está aceptado por el SII, o no tiene correo de destino'),
+          },
         },
       },
       '/v1/documentos/{id}/xml': {
@@ -181,11 +204,21 @@ export const moduloDocumentos = definirModulo({
           montoTotal: { type: 'integer' },
           xmlUrl: { type: 'string' },
           pdfUrl: { type: 'string' },
+          correo: {
+            type: 'object',
+            description: 'Solo si el documento tiene correo de destino.',
+            properties: {
+              destino: { type: 'string' },
+              estado: { type: 'string', enum: ['AL_ACEPTAR_SII', 'PENDIENTE', 'ENVIADO', 'ERROR'] },
+              enviadoAt: { type: 'string', format: 'date-time' },
+              error: { type: 'string' },
+            },
+          },
         },
       },
     },
   },
-  registrar(app, { documentos }) {
+  registrar(app, { documentos, correos }) {
     app.post('', { config: { scope: 'documentos:emitir' } }, async (request, reply) => {
       const idempotencyKey = request.headers['idempotency-key'];
       const { documento, idempotente, advertencias } = await documentos.emitir(
@@ -222,17 +255,30 @@ export const moduloDocumentos = definirModulo({
         .send(pdf);
     });
 
+    app.post('/:id/correo', { config: { scope: 'documentos:emitir' } }, async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const { correo } = CorreoSchema.parse(request.body ?? {});
+      const doc = await documentos.obtener(request.apiClient!, id);
+      if (!doc) throw new ApiError(404, 'Documento no encontrado');
+      if (!['ACEPTADO', 'ACEPTADO_CON_REPARO'].includes(doc.estado)) {
+        throw new ApiError(422, `El documento está ${doc.estado}: se envía por correo cuando el SII lo acepta.`);
+      }
+      if (!correo && !doc.correoDestino) {
+        throw new ApiError(422, 'El documento no tiene correo de destino: indica "correo".');
+      }
+      const actualizado = await correos.solicitar(doc.id, correo);
+      return reply.code(202).send(documentos.respuesta(actualizado));
+    });
+
     app.get('/:id/xml', { config: { scope: 'documentos:leer' } }, async (request, reply) => {
       const { id } = request.params as { id: string };
       const doc = await documentos.obtener(request.apiClient!, id);
-      if (!doc?.dteXmlFirmado) throw new ApiError(404, 'Documento no encontrado');
-      // El DTE se firmó asumiendo el namespace del SII: el XML suelto debe declararlo para verificar
-      const dte = doc.dteXmlFirmado.replace(/^<DTE version="1.0">/, '<DTE xmlns="http://www.sii.cl/SiiDte" version="1.0">');
-      const xml = `<?xml version="1.0" encoding="ISO-8859-1"?>\n${dte}`;
+      const xml = doc ? xmlDescargable(doc) : null;
+      if (!doc || !xml) throw new ApiError(404, 'Documento no encontrado');
       return reply
         .type('application/xml; charset=ISO-8859-1')
         .header('Content-Disposition', `attachment; filename="DTE_${doc.tipoDte}_${doc.folio}.xml"`)
-        .send(Buffer.from(xml, 'latin1'));
+        .send(xml);
     });
   },
 });

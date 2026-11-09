@@ -26,6 +26,7 @@ export interface EmitirDtePayload {
   apiClientId?: string; // Integración externa (API v1) que solicita el documento
   idempotencyReservationId?: string; // Reserva interna de la API, enlazada atómicamente al DTE
   referenciaExterna?: string; // Id del documento en el proyecto que lo solicita (ej. pedido)
+  correoDestino?: string; // Correo del receptor para este documento (se envía al ser aceptado por el SII)
 }
 
 export class DteBillingOrchestratorService {
@@ -89,7 +90,7 @@ export class DteBillingOrchestratorService {
    * asignando folio atómicamente desde su CAF vigente y almacenando el XML firmado.
    */
   public async emitirYFirmarDte(payload: EmitirDtePayload) {
-    const { tenantId, receptorId, tipoDte, fechaEmision, fechaVenc, fmaPago, detalles, referencias, apiClientId, referenciaExterna } =
+    const { tenantId, receptorId, tipoDte, fechaEmision, fechaVenc, fmaPago, detalles, referencias, apiClientId, referenciaExterna, correoDestino } =
       payload;
 
     // 1. Verificar existencia del Tenant y que el Receptor pertenezca al mismo Tenant (Aislamiento estricto)
@@ -182,6 +183,7 @@ export class DteBillingOrchestratorService {
             cafId,
             apiClientId,
             referenciaExterna,
+            correoDestino: correoDestino ?? null,
             tipoDte,
             folio,
             fechaEmision: new Date(fechaEmision),

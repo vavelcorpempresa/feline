@@ -146,6 +146,14 @@ Todo `POST` que emite un documento lleva `Idempotency-Key`, estable por operaci�
 
 Feline avisa los cambios de estado con un `POST` a la URL del proyecto. El cuerpo es el documento más `evento` y lleva la cabecera `x-firma` = HMAC-SHA256 (hex) del cuerpo exacto con el secreto del proyecto. El receptor verifica la firma con `parsearWebhookFeline` del SDK y responde 2xx. Si no responde 2xx, Feline reintenta con espera creciente (30 s hasta 6 h, 12 intentos). `202` al emitir no significa aceptado por el SII: el estado final llega por webhook.
 
+## 5b. Correo al receptor
+
+Si la emisión trae `receptor.correo`, Feline envía el PDF y el XML a esa dirección cuando el SII acepta el documento. El envío usa Resend desde `FELINE_CORREO_REMITENTE`, con la razón social del emisor como nombre visible. El estado queda en el campo `correo` del documento (`AL_ACEPTAR_SII`, `PENDIENTE`, `ENVIADO` o `ERROR`).
+
+Para reenviarlo, o enviarlo a otra dirección: `POST /v1/documentos/:id/correo` con `{ "correo": "otra@direccion.cl" }`, que exige el permiso `documentos:emitir`. Solo se aceptan documentos ya aceptados por el SII.
+
+El correo se guarda por documento, no por cliente: las boletas a consumidor final comparten el RUT 66666666-6.
+
 ## 6. Versiones
 
 - La versión mayor va en la ruta (`/v1`). Dentro de `/v1` solo se hacen cambios compatibles: rutas nuevas, campos nuevos opcionales y valores nuevos documentados.

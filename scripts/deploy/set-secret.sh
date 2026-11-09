@@ -6,10 +6,10 @@
 KEY="${1:-}"
 case "$KEY" in
   FELINE_ADMIN_TOKEN|FELINE_SESSION_SECRET|SPACES_ACCESS_KEY_ID|SPACES_SECRET_ACCESS_KEY) ;;
-  FELINE_SII_PRODUCCION_AUTORIZADA) ;;
+  FELINE_SII_PRODUCCION_AUTORIZADA|RESEND_API_KEY) ;;
   *) echo "Uso: scripts/deploy/set-secret.sh <CLAVE>"
      echo "Claves: FELINE_ADMIN_TOKEN FELINE_SESSION_SECRET SPACES_ACCESS_KEY_ID SPACES_SECRET_ACCESS_KEY"
-     echo "        FELINE_SII_PRODUCCION_AUTORIZADA"
+     echo "        FELINE_SII_PRODUCCION_AUTORIZADA RESEND_API_KEY"
      echo "TENANT_VAULT_MASTER_KEY no se cambia con este script: cambiarla deja ilegibles los certificados guardados."
      exit 1 ;;
 esac

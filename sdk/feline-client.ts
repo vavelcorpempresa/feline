@@ -91,6 +91,14 @@ export interface Documento {
   montoTotal: number;
   xmlUrl: string;
   pdfUrl: string;
+  /** Envío por correo al receptor (solo si el documento tiene correo de destino). */
+  correo?: {
+    destino: string;
+    /** AL_ACEPTAR_SII: se enviará cuando el SII lo acepte. */
+    estado: 'AL_ACEPTAR_SII' | 'PENDIENTE' | 'ENVIADO' | 'ERROR';
+    enviadoAt?: string;
+    error?: string;
+  };
 }
 
 export interface ResultadoEmision extends Documento {
@@ -276,6 +284,14 @@ export class FelineClient {
       signal: AbortSignal.timeout(this.opciones.timeoutMs ?? 30_000),
     });
     return (await res.json()) as Salud;
+  }
+
+  /**
+   * Reenvía el PDF y el XML por correo al receptor (o a `correo`). El primer envío es automático
+   * cuando el SII acepta el documento y `receptor.correo` venía en la emisión.
+   */
+  enviarCorreo(id: string, correo?: string): Promise<Documento> {
+    return this.json('POST', `/v1/documentos/${encodeURIComponent(id)}/correo`, correo ? { correo } : {});
   }
 
   /** Pide a Feline enviar un evento `webhook.prueba` a tu webhook y devuelve si llegó. */

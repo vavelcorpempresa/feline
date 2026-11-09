@@ -3,6 +3,7 @@ import bwipjs from 'bwip-js';
 import { ClienteReceptor, DocumentoDTE, Tenant } from '@prisma/client';
 import { ODOO_L10N_CL_DOCUMENT_TYPES } from './odoo-account-move.service';
 import { DetalleItemSII } from '../types/sii-dte.types';
+import { receptorDelDocumento } from './dte-archivos';
 
 // ============================================================================
 // REPRESENTACIÓN IMPRESA DEL DTE (PDF) CON TIMBRE ELECTRÓNICO PDF417
@@ -27,7 +28,7 @@ export class DtePdfService {
     const detalles = (doc.detallesJson as unknown as DetalleItemSII[]) ?? [];
     const timbre = doc.tedXml ? await DtePdfService.timbrePdf417(doc.tedXml) : null;
     const t = doc.tenant;
-    const r = doc.receptor;
+    const r = receptorDelDocumento(doc, doc.receptor);
 
     return new Promise<Buffer>((resolve, reject) => {
       const pdf = new PDFDocument({ size: 'LETTER', margin: 40 });

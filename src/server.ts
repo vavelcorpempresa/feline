@@ -29,6 +29,7 @@ import { renderPanel } from './ui/panel-compilado';
 import { CodigoTipoDTE } from './types/sii-dte.types';
 import { normalizeAndValidateRut } from './utils/sii-normative.utils';
 import { registerApiV1 } from './api/v1';
+import { CorreoDocumentosService } from './services/correo.service';
 import { ApiDocumentosService } from './services/api-documentos.service';
 import { WebhookService } from './services/webhook.service';
 import { DteDispatcherService } from './services/dte-dispatcher.service';
@@ -61,6 +62,8 @@ export interface BuildAppOptions {
   siiModo?: SiiModo;
   /** Cliente HTTP para entregar webhooks (inyectable en pruebas). */
   webhookFetch?: typeof fetch;
+  /** Cliente HTTP para enviar correos por Resend (inyectable en pruebas). */
+  correoFetch?: typeof fetch;
 }
 
 declare module 'fastify' {
@@ -120,8 +123,10 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     (doc) => apiDocumentos.respuesta(doc),
     options.webhookFetch ?? globalThis.fetch
   );
+  const correos = CorreoDocumentosService.desdeEntorno(prismaBase, options.correoFetch);
   const dispatcher = new DteDispatcherService(prismaBase, orchestrator, siiWsService, signerService, webhooks, {
     intervaloMs: Number(process.env.FELINE_DISPATCHER_INTERVAL_MS || 15_000),
+    correos,
   });
   app.decorate('dteDispatcher', dispatcher);
   // Al aceptar un documento por la API se envía de inmediato al SII (el despachador reintenta si falla)
@@ -131,6 +136,7 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     prisma: prismaBase,
     documentos: apiDocumentos,
     webhooks,
+    correos,
     publicBaseUrl: urlPublica(),
   });
 

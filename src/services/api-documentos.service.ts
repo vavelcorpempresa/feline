@@ -71,6 +71,12 @@ export const DocumentoRequestSchema = z.object({
 export type DocumentoRequest = z.infer<typeof DocumentoRequestSchema>;
 
 /** Error de negocio con código HTTP explícito (se responde tal cual al cliente). */
+/** Correo del receptor si tiene forma válida; uno mal escrito no impide emitir, solo no se envía. */
+function correoValido(correo?: string): string | undefined {
+  const c = correo?.trim();
+  return c && c.length <= 120 && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(c) ? c : undefined;
+}
+
 // La forma de los errores y del proyecto conectado la define la norma de la API
 export { ApiError } from '../api/norma/errores';
 export type { ApiClientContext } from '../api/norma/modulo';
@@ -233,6 +239,7 @@ export class ApiDocumentosService {
         apiClientId: client.id,
         idempotencyReservationId: reserva.id,
         referenciaExterna: req.referenciaExterna,
+        correoDestino: correoValido(req.receptor.correo),
       });
 
       // Al aceptar el documento se envía de inmediato al SII
@@ -361,6 +368,20 @@ export class ApiDocumentosService {
       montoTotal: doc.mntTotal,
       xmlUrl: `${this.publicBaseUrl}/v1/documentos/${doc.id}/xml`,
       pdfUrl: `${this.publicBaseUrl}/v1/documentos/${doc.id}/pdf`,
+      correo: doc.correoDestino
+        ? {
+            destino: doc.correoDestino,
+            estado: doc.correoPendiente
+              ? 'PENDIENTE'
+              : doc.correoEnviadoAt
+                ? 'ENVIADO'
+                : doc.correoError
+                  ? 'ERROR'
+                  : 'AL_ACEPTAR_SII',
+            enviadoAt: doc.correoEnviadoAt?.toISOString(),
+            error: doc.correoPendiente || !doc.correoError ? undefined : doc.correoError,
+          }
+        : undefined,
     };
   }
 

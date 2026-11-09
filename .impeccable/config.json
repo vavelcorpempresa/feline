@@ -71,6 +71,12 @@
         ],
         "createdAt": "2026-11-02T02:28:14.458Z",
         "reason": "Agent decision: unchosen decision-round sketch in its own world, not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "arial",
+        "createdAt": "2026-11-09T14:53:37.595Z",
+        "reason": "Claude: HTML de correo transaccional (src/services/correo.service.ts); los clientes de correo no cargan fuentes web, se usa pila de fuentes del sistema"
       }
     ]
   }

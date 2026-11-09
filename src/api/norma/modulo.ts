@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import type { ApiDocumentosService } from '../../services/api-documentos.service';
 import type { WebhookService } from '../../services/webhook.service';
+import type { CorreoDocumentosService } from '../../services/correo.service';
 
 // ============================================================================
 // NORMA API · CONTRATO DE UN MÓDULO
@@ -27,6 +28,7 @@ export interface ContextoApi {
   prisma: PrismaClient;
   documentos: ApiDocumentosService;
   webhooks: WebhookService;
+  correos: CorreoDocumentosService;
   publicBaseUrl: string;
 }
 

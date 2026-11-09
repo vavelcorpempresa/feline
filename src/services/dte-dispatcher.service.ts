@@ -44,7 +44,11 @@ export interface DispatcherOptions {
   lote?: number;
   /** Registro de errores; por defecto console.error. */
   registrarError?: (mensaje: string, error: unknown) => void;
+  /** Envío por correo al receptor de los documentos aceptados por el SII. */
+  correos?: { enviarPendientes(): Promise<number> };
 }
+
+const ACEPTADOS: DteStatus[] = ['ACEPTADO', 'ACEPTADO_CON_REPARO'];
 
 /** Prefijo de la glosa de un envío fallido: marca el documento para esperar antes de reintentar. */
 export const GLOSA_REINTENTO = 'Reintento de envío: ';
@@ -93,7 +97,8 @@ export class DteDispatcherService {
       const enviados = await this.enviarFirmados();
       const consultados = await this.consultarEnviados();
       const webhooks = await this.webhooks.entregarPendientes();
-      return { recuperados, enviados, consultados, webhooks };
+      const correos = (await this.opciones.correos?.enviarPendientes()) ?? 0;
+      return { recuperados, enviados, consultados, webhooks, correos };
     } catch (err: any) {
       // No tumbar el servidor (por ejemplo, sin base de datos en desarrollo), pero dejar registro
       this.registrarError('el ciclo falló', err);
@@ -234,6 +239,10 @@ export class DteDispatcherService {
           data: {
             siiConsultadoAt: new Date(),
             ...(estadoFinal ? { estado: estadoFinal, glosaEstadoSii: glosa.slice(0, 1000) } : {}),
+            // Aceptado por el SII con correo de destino: queda en cola para enviárselo al receptor
+            ...(estadoFinal && ACEPTADOS.includes(estadoFinal) && doc.correoDestino && !doc.correoEnviadoAt
+              ? { correoPendiente: true, correoSolicitadoAt: new Date() }
+              : {}),
           },
         });
         if (estadoFinal) {

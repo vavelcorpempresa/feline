@@ -492,6 +492,15 @@ model DocumentoDTE {
   glosaEstadoSii  String?     @db.Text
   trackId         String?     @db.VarChar(32)
   siiConsultadoAt DateTime?                            // Última consulta de estado al SII
+  // Envío por correo al receptor (PDF + XML) cuando el SII acepta el documento.
+  // El destino es por documento: las boletas a consumidor final comparten el receptor 66666666-6.
+  correoDestino      String?   @db.VarChar(120)
+  correoPendiente    Boolean   @default(false)
+  correoSolicitadoAt DateTime?                         // Identifica cada solicitud de envío (idempotencia)
+  correoSiguienteAt  DateTime?                         // Próximo intento tras un error
+  correoIntentos     Int       @default(0)
+  correoEnviadoAt    DateTime?
+  correoError        String?   @db.VarChar(500)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -513,6 +522,7 @@ model DocumentoDTE {
   @@index([tenantId, trackId])
   @@index([apiClientId, referenciaExterna])
   @@index([tenantId, createdAt])
+  @@index([correoPendiente, correoSiguienteAt])
   @@map("documentos_dte")
 }
 
