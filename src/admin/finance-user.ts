@@ -1,10 +1,15 @@
 import { z } from 'zod';
 import { prismaBase } from '../core/tenant-context';
 import { hashClave } from '../auth/panel-auth';
+import { normalizeAndValidateRut } from '../utils/sii-normative.utils';
 
 // Aprovisionamiento explícito; contraseña por variable, nunca argumento ni registro.
+// Empresa por FELINE_FINANCE_TENANT_ID (uuid) o por FELINE_FINANCE_RUT (scripts/deploy/crear-usuario.sh).
 async function main() {
-  const tenantId = z.string().uuid().parse(process.env.FELINE_FINANCE_TENANT_ID);
+  const rut = process.env.FELINE_FINANCE_RUT;
+  const tenantId = rut
+    ? (await prismaBase.tenant.findUniqueOrThrow({ where: { rut: normalizeAndValidateRut(rut) } })).id
+    : z.string().uuid().parse(process.env.FELINE_FINANCE_TENANT_ID);
   const email = z.string().email().transform(s => s.toLowerCase()).parse(process.env.FELINE_FINANCE_EMAIL);
   const name = z.string().min(2).max(100).parse(process.env.FELINE_FINANCE_NAME);
   const password = z.string().min(12).max(256).parse(process.env.FELINE_FINANCE_PASSWORD);
