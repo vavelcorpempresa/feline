@@ -53,6 +53,7 @@ export interface ReferenciaDocumento {
 export interface DocumentoRequest {
   tipoDte: TipoDte;
   /** Id del documento en tu proyecto (ej. pedido). Se puede usar para buscarlo después. */
+  montoConfirmado?: number;
   referenciaExterna?: string;
   fechaEmision?: string;
   fechaVencimiento?: string;

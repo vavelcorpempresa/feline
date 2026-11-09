@@ -1,9 +1,14 @@
+import { formatSiiTimestamp } from './utils/sii-normative.utils';
+import { calculateIlaPreview } from './services/ila-preview';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
 import crypto from 'node:crypto';
 import { prismaBase } from './core/tenant-context';
-import { VERSION, puerto, urlPublica } from './config';
+import { VERSION, puerto, urlPublica, modoSii } from './config';
+import { registerFinance } from './finance/routes';
+import { FinanceCentralizer } from './finance/centralizer';
+import { renderFinancePanel } from './ui/finance-panel';
 import { hashClave, registrarAutenticacionPanel, usuarioPublico, validarClaveNueva, permisosDe } from './auth/panel-auth';
 import { CryptoVaultService } from './core/crypto-vault';
 import { CafTedService } from './services/caf-ted.service';
@@ -54,6 +59,7 @@ export interface BuildAppOptions {
 declare module 'fastify' {
   interface FastifyInstance {
     dteDispatcher: DteDispatcherService;
+    financeCentralizer: FinanceCentralizer;
   }
 }
 
@@ -63,6 +69,10 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
   });
 
   app.register(cors);
+  registerFinance(app, prismaBase);
+  const financeCentralizer = new FinanceCentralizer(prismaBase);
+  app.decorate('financeCentralizer', financeCentralizer);
+  app.addHook('onClose', async () => financeCentralizer.stop());
 
   // Errores de validación de entrada (zod) son errores del cliente (400), no del servidor (500)
   app.setErrorHandler((error, _request, reply) => {
@@ -79,7 +89,7 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
   const vault = new CryptoVaultService();
   const cafTedService = new CafTedService(prismaBase, vault);
   const signerService = new XmlDsigSignerService(prismaBase, vault);
-  const siiModo: SiiModo = options.siiModo ?? (process.env.FELINE_SII_MODO === 'simulado' ? 'simulado' : 'real');
+  const siiModo: SiiModo = modoSii(options.siiModo);
   const siiWsService = new SiiWebServiceIntegration(
     siiModo === 'simulado' ? crearFetchSiiSimulado() : globalThis.fetch
   );
@@ -139,6 +149,8 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     return reply.type('text/html; charset=utf-8').send(renderPanel());
   });
 
+  app.get('/finanzas', async (_request, reply) => reply.header('Cache-Control', 'no-store').type('text/html; charset=utf-8').send(renderFinancePanel()));
+
   app.get('/dashboard', async (_request, reply) => {
     return reply.type('text/html; charset=utf-8').send(renderPanel());
   });
@@ -152,11 +164,13 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     version: VERSION,
     port: puerto(),
     status: 'online',
+    siiMode: siiModo,
+    automaticAccounting: process.env.FELINE_FINANCE_DISPATCHER === 'on',
   }));
 
   // --------------------------------------------------------------------------
   // ENDPOINTS INTERACTIVOS DEL DASHBOARD ANTD MULTIPURPOSE (SANDBOX EN VIVO)
-  // Son de demostración (datos en memoria, sin autenticación): en producción quedan
+  // Son de demostración (datos en memoria, con sesión y permisos): en producción quedan
   // bloqueados salvo que se habiliten explícitamente con FELINE_DEMO=on.
   // --------------------------------------------------------------------------
   const demoHabilitado = process.env.NODE_ENV !== 'production' || process.env.FELINE_DEMO === 'on';
@@ -210,6 +224,26 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
       accounting: felineSandboxStore.getAccountingReport(tenantId, `${periodo}-31`),
       expenses: felineSandboxStore.expenses.filter((e) => e.tenantId === tenantId),
       expenseSheets: felineSandboxStore.expenseSheets.filter((s) => s.tenantId === tenantId),
+      // La sesión de demostración solo autoriza datos en memoria.
+      // La información persistente se consulta con la sesión de /finanzas.
+      finance: {
+        isPersistent: false,
+        receivables: [],
+        payables: [],
+        vendors: [],
+        cashBoxes: [],
+        bankAccounts: [],
+        costCenters: [],
+        receivedDtes: [],
+        taxDeclarations: [],
+        budgets: [],
+        fixedAssets: [],
+        payrollEmployees: [],
+        feeReceipts: [],
+        currencyRates: [],
+        taxSettings: null,
+        auditEvents: [],
+      },
     };
   });
 
@@ -374,10 +408,41 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
     }
   });
 
+  const invoicePreview = z.object({
+    documentTypeCode: z.union([z.literal(33), z.literal(34)]),
+    invoiceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    ilaOperation: z.literal('taxable-domestic-sale').optional(),
+    lines: z.array(z.object({
+      productCode: z.string().max(35).optional(),
+      name: z.string().trim().min(1).max(80),
+      quantity: z.number().positive().max(100000000),
+      uomName: z.string().max(4),
+      priceUnit: z.number().min(0).max(1000000000),
+      discountPct: z.number().min(0).max(100),
+      isExempt: z.boolean(),
+      ilaCode: z.union([z.literal(24),z.literal(25),z.literal(26),z.literal(27),z.literal(271)]).optional(),
+    }).strict()).min(1).max(60),
+  }).strict();
+  app.post('/api/v1/dashboard/moves/preview', async (request, reply) => {
+    const body = invoicePreview.parse(request.body);
+    try {
+      const { amountUntaxed, amountExempt, amountTax, amountTotal, lines } =
+        OdooAccountMoveService.computeMoveLinesAndTotals(body.lines, body.documentTypeCode);
+      const ila = calculateIlaPreview(body.documentTypeCode, body.invoiceDate ?? formatSiiTimestamp().slice(0,10), body.ilaOperation,
+        lines.map((line,index)=>({ code:body.lines[index].ilaCode, exempt:Boolean(line.isExempt), base:line.priceSubtotal })));
+      return { amountUntaxed, amountExempt, amountTax, amountTotal: amountTotal + ila.reduce((sum,item)=>sum+item.amount,0), ila };
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : 'No se pudo calcular la factura.' });
+    }
+  });
+
   app.post('/api/v1/dashboard/moves', async (request, reply) => {
     try {
       const tenantId = String(request.headers['x-tenant-id'] || 'tenant-feline-tech-01');
       const body = request.body as any;
+      if (Array.isArray(body.lines) && body.lines.some((line: { ilaCode?: unknown }) => line?.ilaCode !== undefined)) {
+        return reply.code(422).send({ error: 'Emisión con ILA pendiente de validación XML y contabilización. Puedes consultar la vista previa.' });
+      }
       const move = felineSandboxStore.createDraftMove({
         tenantId,
         partnerId: body.partnerId,
@@ -658,11 +723,12 @@ export function buildFastifyApp(options: BuildAppOptions = {}): FastifyInstance 
 if (require.main === module) {
   const server = buildFastifyApp();
   const port = puerto();
+  if (process.env.FELINE_FINANCE_DISPATCHER === 'on') server.financeCentralizer.start();
   if (process.env.FELINE_DISPATCHER !== 'off') {
     server.dteDispatcher.start();
-    server.log.info(`Despachador SII activo (modo ${process.env.FELINE_SII_MODO === 'simulado' ? 'SIMULADO' : 'real'})`);
+    server.log.info(`Despachador SII activo (modo ${process.env.FELINE_SII_MODO === 'real' ? 'real' : 'SIMULADO'})`);
   }
-  server.listen({ port, host: '0.0.0.0' }).catch((err) => {
+  server.listen({ port, host: process.env.FELINE_HOST || '0.0.0.0' }).catch((err) => {
     server.log.error(err);
     process.exit(1);
   });

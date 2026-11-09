@@ -857,10 +857,28 @@ export class OdooAccountMoveService {
         throw new Error('[Odoo AccountPayment] Esta factura ya se encuentra completamente pagada o revertida.');
       }
 
-      const appliedAmount = Math.min(move.amountResidual, Math.round(amount));
+      // Un DTE centralizado se cobra por el núcleo de cartera, no por dos libros distintos.
+      if (move.documentoDteId) {
+        await tx.$queryRaw`SELECT id FROM tenants WHERE id = ${tenantId}::uuid FOR UPDATE`;
+        if (await tx.financeReceivable.findUnique({ where: { documentId: move.documentoDteId } })) {
+          throw new Error('Este documento ya tiene cartera persistente. Registra su cobro desde Finanzas y Contabilidad.');
+        }
+      }
+
+      const journal = await tx.accountJournal.findFirst({
+        where: { id: journalId, tenantId, isActive: true, type: { in: ['BANK', 'CASH'] } },
+      });
+      if (!journal) throw new Error('El diario de pago debe ser caja o banco de la misma empresa.');
+      if (!Number.isSafeInteger(amount)) throw new Error('El pago CLP debe ser un entero seguro.');
+      const appliedAmount = Math.min(move.amountResidual, amount);
       const newResidual = move.amountResidual - appliedAmount;
       const newPaymentState = newResidual === 0 ? 'PAID' : 'PARTIAL';
 
+      const changed = await tx.accountMove.updateMany({
+        where: { id: move.id, tenantId, state: 'POSTED', amountResidual: move.amountResidual },
+        data: { amountResidual: newResidual, paymentState: newPaymentState },
+      });
+      if (changed.count !== 1) throw new Error('El saldo cambió por otro pago. Consulta el documento y reintenta.');
       const payment = await tx.accountPayment.create({
         data: {
           tenantId,
@@ -873,13 +891,7 @@ export class OdooAccountMoveService {
         },
       });
 
-      const updatedMove = await tx.accountMove.update({
-        where: { id: move.id },
-        data: {
-          amountResidual: newResidual,
-          paymentState: newPaymentState,
-        },
-      });
+      const updatedMove = await tx.accountMove.findUniqueOrThrow({ where: { id: move.id } });
 
       return { payment, updatedMove };
     });

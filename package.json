@@ -12,7 +12,9 @@
     "prisma:migrate": "prisma migrate dev",
     "typecheck": "tsc -p tsconfig.json",
     "admin": "tsx --env-file-if-exists=.env src/admin/feline-admin.ts",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "finance:user": "tsx --env-file-if-exists=.env src/admin/finance-user.ts",
+    "test:unit": "vitest run --exclude tests/api-v1.integration.test.ts --exclude tests/finance-core.integration.test.ts --exclude tests/finance-setup.integration.test.ts --exclude tests/finance-receivables.integration.test.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

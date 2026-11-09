@@ -9,7 +9,7 @@ const error = (descripcion: string) => ({ description: descripcion, content: jso
 
 export function buildOpenApiSpec(publicBaseUrl: string) {
   return {
-    openapi: '3.0.3',
+    openapi: '3.1.0',
     info: {
       title: 'Feline API',
       version: '1.0.0',
@@ -64,6 +64,7 @@ export function buildOpenApiSpec(publicBaseUrl: string) {
           required: ['tipoDte', 'emisor', 'receptor', 'items'],
           properties: {
             tipoDte: { type: 'integer', enum: [33, 34, 39, 41, 56, 61] },
+            montoConfirmado: { type: 'integer', minimum: 1, maximum: 2147483647, description: 'Total CLP confirmado por el backend de pagos. Si difiere del cálculo, no se consume folio.' },
             referenciaExterna: {
               type: 'string',
               maxLength: 100,

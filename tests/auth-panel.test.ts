@@ -35,6 +35,8 @@ describe('Inicio de sesión y roles del panel', () => {
 
   it('Sin sesión el panel responde 401; una cookie alterada o vencida no sirve', async () => {
     expect((await estado()).statusCode).toBe(401);
+    expect((await estado('feline_sesion=%ZZ')).statusCode).toBe(401);
+    expect(verificarClave('x', 'scrypt$00$xx')).toBe(false);
     const valida = firmarSesion('user-x');
     expect(leerSesion(valida)?.uid).toBe('user-x');
     const [datos, firma] = valida.split('.');

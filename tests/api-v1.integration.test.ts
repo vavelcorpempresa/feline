@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
@@ -10,6 +12,14 @@ import type { PrismaClient } from '@prisma/client';
 // ============================================================================
 
 const TEST_DB = process.env.TEST_DATABASE_URL;
+if (TEST_DB) {
+  if (process.env.FINANCE_TEST_DATABASE_URL) throw new Error('Ejecuta las integraciones DTE y financiera por separado para evitar borrados concurrentes.');
+  const u = new URL(TEST_DB);
+  if (!['localhost', '127.0.0.1'].includes(u.hostname) || !u.pathname.endsWith('_test') || process.env.FELINE_TEST_ALLOW_RESET !== 'YES_DROP_TEST_DATA') {
+    throw new Error('La integración DTE vacía tablas: exige base local terminada en _test y FELINE_TEST_ALLOW_RESET=YES_DROP_TEST_DATA.');
+  }
+}
+
 
 // Copia literal de lo que hace FUGAR (app/api/v1/billing/webhook/route.ts y lib/dte/types.ts)
 function fugarVerificaFirma(bodyText: string, signature: string | null, secret: string): boolean {
@@ -325,7 +335,7 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
       const res = await fetch(`${baseUrl}/v1/openapi.json`);
       expect(res.status).toBe(200);
       const spec = await res.json();
-      expect(spec.openapi).toBe('3.0.3');
+      expect(spec.openapi).toBe('3.1.0');
       expect(Object.keys(spec.paths)).toEqual(
         expect.arrayContaining(['/v1/documentos', '/v1/documentos/{id}', '/v1/empresa', '/v1/webhooks/prueba'])
       );
@@ -575,4 +585,180 @@ describe.skipIf(!TEST_DB)('API v1 Motor DTE ↔ FUGAR Marketplace (PostgreSQL)',
       espia.mockRestore();
     });
   });
+  describe('Emisión e idempotencia atómicas', () => {
+    it('Un fallo al enlazar la reserva revierte el DTE y conserva el folio sin uso', async () => {
+      let fail = true;
+      prisma.$use(async (params, next) => {
+        if (fail && params.model === 'ApiIdempotencia' && params.action === 'updateMany') {
+          fail = false;
+          throw new Error('Fallo simulado al enlazar la reserva');
+        }
+        return next(params);
+      });
+      const before = await prisma.documentoDTE.count();
+      const unused = await prisma.folioSinUso.count();
+      const first = await emitir(payloadFugar(33), 'atomic-bind');
+      expect(first.statusCode).toBeGreaterThanOrEqual(400);
+      expect(await prisma.documentoDTE.count()).toBe(before);
+      expect(await prisma.folioSinUso.count()).toBe(unused + 1);
+      expect(await prisma.apiIdempotencia.count({ where: { clave: 'atomic-bind' } })).toBe(0);
+      const retry = await emitir(payloadFugar(33), 'atomic-bind');
+      expect(retry.statusCode).toBe(202);
+      expect(await prisma.documentoDTE.count()).toBe(before + 1);
+    });
+    it('Un fallo posterior al commit no libera la clave ni emite un segundo DTE', async () => {
+      const { ApiDocumentosService } = await import('../src/services/api-documentos.service');
+      const spy = vi.spyOn(ApiDocumentosService.prototype as any, 'enviarDeInmediato').mockRejectedValueOnce(new Error('Fallo simulado al preparar la respuesta'));
+      const before = await prisma.documentoDTE.count();
+      const first = await emitir(payloadFugar(33), 'atomic-response');
+      spy.mockRestore();
+      expect(first.statusCode).toBeGreaterThanOrEqual(400);
+      const reservation = await prisma.apiIdempotencia.findFirstOrThrow({ where: { clave: 'atomic-response' } });
+      expect(reservation.documentoId).toBeTruthy();
+      const retry = await emitir(payloadFugar(33), 'atomic-response');
+      expect(retry.statusCode).toBe(200);
+      expect(retry.json().id).toBe(reservation.documentoId);
+      expect(await prisma.documentoDTE.count()).toBe(before + 1);
+    });
+  });
+
+  it('Ventas lee el DTE persistente, separa cobro y aceptación y descarga los archivos', async () => {
+    const { formatSiiTimestamp } = await import('../src/utils/sii-normative.utils');
+    const fechaEmision = formatSiiTimestamp().slice(0, 10);
+    const emitted = await emitir(payloadFugar(33, { fechaEmision }), 'ventas-panel-integracion');
+    expect(emitted.statusCode).toBe(202);
+    const dte = await prisma.documentoDTE.findFirstOrThrow({
+      where: { id: emitted.json().id },
+      orderBy: { createdAt: 'desc' },
+    });
+    const token = crypto.randomBytes(32).toString('hex');
+    const user = await prisma.financeUser.create({ data: {
+      email: 'ventas-integration@example.test', name: 'Consulta ventas', passwordHash: 'fixture',
+      memberships: { create: { tenantId: dte.tenantId, role: 'VIEWER' } },
+      sessions: { create: { tokenHash: crypto.createHash('sha256').update(token).digest('hex'),
+        expiresAt: new Date(Date.now() + 60_000) } },
+    } });
+    const headers = { cookie: 'feline_finance=' + token, 'x-tenant-id': dte.tenantId };
+    const url = '/api/v1/finance/sales';
+    const before = await app.inject({ url: url + '/summary', headers });
+    expect(before.statusCode).toBe(200);
+    await prisma.documentoDTE.update({ where: { id: dte.id }, data: { estado: 'ACEPTADO' } });
+    const after = await app.inject({ url: url + '/summary', headers });
+    expect(after.statusCode).toBe(200);
+    expect(after.json().periods.day.gross - before.json().periods.day.gross).toBe(dte.mntTotal);
+    const list = await app.inject({ url: url + '/documents?kind=invoice&folio=' + dte.folio, headers });
+    expect(list.statusCode).toBe(200);
+    expect(list.json().items).toEqual(expect.arrayContaining([expect.objectContaining({
+      id: dte.id, estado: 'ACEPTADO', paymentStatus: 'Sin saldo verificado',
+    })]));
+    for (const format of ['pdf', 'xml']) {
+      const file = await app.inject({ url: url + '/documents/' + dte.id + '/' + format, headers });
+      expect(file.statusCode).toBe(200);
+      expect(file.body.startsWith(format === 'pdf' ? '%PDF' : '<?xml')).toBe(true);
+    }
+    await prisma.financeSession.deleteMany({ where: { userId: user.id } });
+  });
+
+  it('Metas solo se crean por acción del propietario y se auditan en PostgreSQL', async () => {
+    const tenant = await prisma.tenant.findUniqueOrThrow({ where: { rut: '76192083-9' } });
+    const token = crypto.randomBytes(32).toString('hex');
+    const owner = await prisma.financeUser.create({ data: {
+      email: 'metas-integration@example.test', name: 'Propietario de prueba', passwordHash: 'fixture',
+      memberships: { create: { tenantId: tenant.id, role: 'OWNER' } },
+      sessions: { create: { tokenHash: crypto.createHash('sha256').update(token).digest('hex'),
+        expiresAt: new Date(Date.now() + 60_000) } },
+    } });
+    const url = '/api/v1/finance/sales/goals';
+    const headers = { cookie: 'feline_finance=' + token, 'x-tenant-id': tenant.id, 'content-type': 'application/json' };
+    const query = '/comparison?period=month&date=2025-01-01';
+    const initial = await app.inject({ url: url + query, headers });
+    expect(initial.statusCode).toBe(200);
+    expect(initial.json()).toMatchObject({ goal: null, referenceMonth: null, provisional: true });
+    expect(await prisma.salesGoal.count()).toBe(0);
+    const payload = { period: 'month', startDate: '2025-01-01', target: '12000000', responsible: 'Ventas' };
+    const created = await app.inject({ method: 'POST', url, headers, payload });
+    expect(created.statusCode).toBe(201);
+    expect((await app.inject({ method: 'POST', url, headers, payload })).statusCode).toBe(409);
+    const goal = created.json();
+    const updated = await app.inject({ method: 'PATCH', url: url + '/' + goal.id, headers,
+      payload: { version: goal.updatedAt, target: '13000000', responsible: 'Ventas' } });
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json().target).toBe('13000000');
+    expect(await prisma.financeAuditEvent.count({ where: { tenantId: tenant.id, entityId: goal.id, actorId: owner.id } })).toBe(2);
+    const importUrl = '/api/v1/finance/admin/economic-indicators/ipc/import';
+    const indices = { base: 2023, source: 'https://www.ine.gob.cl/fixture', rows: [
+      { month: '2024-01', value: '100', publishedAt: '2024-02-08' },
+      { month: '2025-01', value: '104', publishedAt: '2025-02-07' },
+    ] };
+    expect((await app.inject({ method: 'POST', url: importUrl, headers, payload: indices })).statusCode).toBe(403);
+    vi.stubEnv('FELINE_ADMIN_TOKEN', 'fixture-goals-admin');
+    try {
+      const adminHeaders = { ...headers, authorization: 'Bearer fixture-goals-admin' };
+      const invalid = await app.inject({ method: 'POST', url: importUrl, headers: adminHeaders,
+        payload: { ...indices, source: 'https://example.test/fake' } });
+      expect(invalid.statusCode).toBe(400);
+      for (const count of [2, 0]) {
+        const response = await app.inject({ method: 'POST', url: importUrl, headers: adminHeaders, payload: indices });
+        expect(response.statusCode).toBe(200);
+        expect(response.json().count).toBe(count);
+      }
+      const comparison = await app.inject({ url: url + query, headers });
+      expect(comparison.json()).toMatchObject({ referenceMonth: '2025-01', provisional: false });
+      expect(comparison.json().comparisons[1].inflation).toBe('4.00');
+    } finally { vi.unstubAllEnvs(); }
+    const custom = await app.inject({ method: 'PATCH', url: url + '/' + goal.id, headers,
+      payload: { version: updated.json().updatedAt, target: '13000000', responsible: 'Ventas',
+        startDate: '2025-01-10', endDate: '2025-02-09' } });
+    expect(custom.statusCode).toBe(200);
+    const resolved = await app.inject({ url: url + '/comparison?period=month&date=2025-01-15', headers });
+    expect(resolved.json()).toMatchObject({ start: '2025-01-10', end: '2025-02-09', goal: { id: goal.id } });
+    expect((await app.inject({ method: 'POST', url, headers,
+      payload: { ...payload, startDate: '2025-02-09', endDate: '2025-03-09' } })).statusCode).toBe(409);
+    expect((await app.inject({ method: 'POST', url, headers,
+      payload: { ...payload, startDate: '2025-03-10', endDate: '2025-03-09' } })).statusCode).toBe(400);
+    const other = await prisma.tenant.findFirstOrThrow({ where: { id: { not: tenant.id } } });
+    expect((await app.inject({ url, headers: { ...headers, 'x-tenant-id': other.id } })).statusCode).toBe(403);
+    await prisma.financeMembership.updateMany({ where: { userId: owner.id }, data: { role: 'VIEWER' } });
+    expect((await app.inject({ method: 'POST', url, headers, payload })).statusCode).toBe(403);
+    const dashboard = await app.inject({ url: url + '/progress', headers });
+    expect(dashboard.statusCode).toBe(200);
+    expect(dashboard.json()).toHaveLength(6);
+    expect(await prisma.salesGoal.count()).toBe(1);
+  });
+
+  it.skipIf(!process.env.FELINE_SII_XSD_DIR)('valida sobres simulados de factura y boleta con XSD oficiales', async () => {
+    const root = process.env.FELINE_SII_XSD_DIR!;
+    for (const [tipoDte, schema] of [[33, 'schema_dte/EnvioDTE_v10.xsd'], [39, 'schema_envio_bol/EnvioBOLETA_v11.xsd']] as const) {
+      const lote = await prisma.envioDteLote.findFirstOrThrow({
+        where: { documentos: { some: { tipoDte } } }, orderBy: { createdAt: 'asc' },
+      });
+      expect(() => execFileSync('xmllint', ['--nonet', '--noout', '--schema', join(root, schema), '-'],
+        { input: Buffer.from(lote.xmlEnvio, 'latin1'), stdio: ['pipe', 'pipe', 'pipe'] })).not.toThrow();
+    }
+  });
+
+  it.skipIf(!process.env.FUGAR_CLIENT_FILE)('FUGAR usa su cliente real sobre HTTP y recupera el mismo DTE al reintentar', async () => {
+    if (!app.server.listening) await app.listen({ host: '127.0.0.1', port: 0 });
+    const addr = app.server.address();
+    if (!addr || typeof addr === 'string') throw new Error('Servidor de prueba sin puerto');
+    vi.stubEnv('MOTOR_DTE_API_URL', 'http://127.0.0.1:' + addr.port + '/v1');
+    vi.stubEnv('MOTOR_DTE_API_KEY', clave);
+    vi.stubEnv('EMISOR_RUT', '76192083-9');
+    try {
+      const { emitirDte } = await import(process.env.FUGAR_CLIENT_FILE!);
+      const ref = 'pedido-http-fugar';
+      const data = {
+        referenciaExterna: ref, montoConfirmado: 11900,
+        receptor: { rut: '66666666-6', razonSocial: 'Consumidor de prueba' },
+        items: [{ nombre: 'Merch de prueba', cantidad: 1, precioUnitario: 11900, exento: false }],
+      };
+      await expect(emitirDte(ref, 39, { ...data, montoConfirmado: 11899 })).rejects.toThrow('422');
+      expect(await prisma.documentoDTE.count({ where: { referenciaExterna: ref } })).toBe(0);
+      const first = await emitirDte(ref, 39, data);
+      const second = await emitirDte(ref, 39, data);
+      expect(second).toMatchObject({ motorDocumentId: first.motorDocumentId, folio: first.folio, idempotente: true });
+      expect(await prisma.documentoDTE.count({ where: { referenciaExterna: ref } })).toBe(1);
+    } finally { vi.unstubAllEnvs(); }
+  });
+
 });

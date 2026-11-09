@@ -74,6 +74,9 @@ describe('API v1 - piezas unitarias', () => {
     expect(factura[0].IndExe).toBeUndefined();
     const exenta = ApiDocumentosService.toDetalles(DocumentoRequestSchema.parse({ ...base, tipoDte: 41 }));
     expect(exenta[0].IndExe).toBe(1);
+    const fraction = ApiDocumentosService.toDetalles(DocumentoRequestSchema.parse({ ...base, tipoDte: 33, items: [{ nombre: 'Fracción', cantidad: 1.005, precio: 100 }] }));
+    expect(fraction[0].MontoItem).toBe(101); // 100,5 CLP exactos, sin error binario
+
   });
 
   it('Referencias: alias del marketplace a códigos SII; desconocidas se omiten con advertencia', () => {

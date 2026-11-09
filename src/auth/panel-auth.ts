@@ -34,7 +34,7 @@ export function hashClave(clave: string): string {
 
 export function verificarClave(clave: string, guardado: string): boolean {
   const [alg, salHex, hashHex] = guardado.split('$');
-  if (alg !== 'scrypt' || !salHex || !hashHex) return false;
+  if (alg !== 'scrypt' || !/^[a-f0-9]{32}$/.test(salHex ?? '') || !/^[a-f0-9]{64}$/.test(hashHex ?? '')) return false;
   const esperado = Buffer.from(hashHex, 'hex');
   const calculado = crypto.scryptSync(clave, Buffer.from(salHex, 'hex'), esperado.length);
   return crypto.timingSafeEqual(calculado, esperado);
@@ -54,7 +54,7 @@ let claveDemoGenerada: string | null = null;
 
 /**
  * Los usuarios de demostración que aún no tienen contraseña entran con FELINE_PANEL_CLAVE_DEMO.
- * Si no está definida, se genera una clave aleatoria al primer uso y se muestra una vez en el registro.
+ * Si no está definida, se genera una clave aleatoria al primer uso y se ofrece solo por el acceso de desarrollo.
  */
 export function claveDemo(registrar: (m: string) => void = console.warn): string {
   const env = process.env.FELINE_PANEL_CLAVE_DEMO;
@@ -62,9 +62,7 @@ export function claveDemo(registrar: (m: string) => void = console.warn): string
   if (!claveDemoGenerada) {
     claveDemoGenerada = crypto.randomBytes(9).toString('base64url');
     registrar(
-      '[Panel] FELINE_PANEL_CLAVE_DEMO no está definida. Clave temporal de los usuarios de demostración: ' +
-        claveDemoGenerada +
-        ' (cambia en cada reinicio; defínela en .env para fijarla).'
+      '[Panel] Clave temporal de demostración generada. Disponible solo en el acceso de desarrollo; no se registra en logs.'
     );
   }
   return claveDemoGenerada;
@@ -109,7 +107,9 @@ function leerCookie(request: FastifyRequest, nombre: string): string | undefined
   const cabecera = request.headers.cookie ?? '';
   for (const parte of cabecera.split(';')) {
     const [k, ...v] = parte.trim().split('=');
-    if (k === nombre) return decodeURIComponent(v.join('='));
+    if (k === nombre) {
+      try { return decodeURIComponent(v.join('=')); } catch { return undefined; }
+    }
   }
   return undefined;
 }
@@ -123,6 +123,10 @@ function cookieSesion(valor: string, maxAgeSeg: number): string {
 // Permisos por ruta del panel (las rutas GET solo exigen sesión)
 // ---------------------------------------------------------------------------
 const REGLAS: Array<{ metodo: string; patron: RegExp; permisos: Permiso[] }> = [
+  { metodo: 'POST', patron: /^\/api\/v1\/dashboard\/expenses$/, permisos: ['canRegisterPurchases'] },
+  { metodo: 'POST', patron: /^\/api\/v1\/dashboard\/expense-sheets$/, permisos: ['canRegisterPurchases'] },
+  { metodo: 'POST', patron: /^\/api\/v1\/dashboard\/expense-sheets\/[^/]+\/submit$/, permisos: ['canRegisterPurchases'] },
+  { metodo: 'POST', patron: /^\/api\/v1\/dashboard\/moves\/preview$/, permisos: ['canIssueInvoices'] },
   { metodo: 'POST', patron: /^\/api\/v1\/dashboard\/moves$/, permisos: ['canIssueInvoices', 'canIssueBoletas'] },
   { metodo: 'POST', patron: /^\/api\/v1\/dashboard\/moves\/[^/]+\/post$/, permisos: ['canIssueInvoices', 'canIssueBoletas'] },
   { metodo: 'POST', patron: /^\/api\/v1\/dashboard\/moves\/[^/]+\/reverse$/, permisos: ['canIssueInvoices'] },
@@ -259,7 +263,7 @@ export function registrarAutenticacionPanel(app: FastifyInstance, store: FelineL
 
     const permisos = permisosDe(usuario);
     const regla = REGLAS.find((r) => (r.metodo === '*' || r.metodo === request.method) && r.patron.test(ruta));
-    if (regla && !regla.permisos.some((p) => permisos?.[p])) {
+    if ((!regla && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) || (regla && !regla.permisos.some((p) => permisos?.[p]))) {
       return reply.code(403).send({ error: 'Tu rol no permite esta acción.' });
     }
     request.usuarioPanel = usuario;

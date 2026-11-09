@@ -15,3 +15,14 @@ export function puerto(): number {
 export function urlPublica(): string {
   return process.env.FELINE_PUBLIC_URL || 'http://localhost:' + puerto();
 }
+
+/** La simulación es el valor local; producción exige una elección explícita. */
+export function modoSii(solicitado?: 'real' | 'simulado'): 'real' | 'simulado' {
+  const value = solicitado ?? process.env.FELINE_SII_MODO;
+  if (value && value !== 'real' && value !== 'simulado') throw new Error('FELINE_SII_MODO debe ser real o simulado.');
+  if (process.env.NODE_ENV === 'production' && !value) throw new Error('Define explícitamente FELINE_SII_MODO antes de iniciar producción.');
+  if (process.env.NODE_ENV === 'production' && value === 'simulado' && process.env.FELINE_DEMO !== 'on') {
+    throw new Error('La simulación en producción solo se permite en un entorno marcado FELINE_DEMO=on.');
+  }
+  return value === 'real' ? 'real' : 'simulado';
+}

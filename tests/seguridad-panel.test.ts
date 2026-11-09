@@ -1,4 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { prismaBase } from '../src/core/tenant-context';
 import { buildFastifyApp } from '../src/server';
 import { felineSandboxStore } from '../src/services/feline-live-sandbox.service';
 import { ADMIN, iniciarSesion } from './ayudas-panel';
@@ -27,6 +28,21 @@ describe('Seguridad del panel y administración', () => {
     expect(estado.users.every((u: any) => u.tenantIds.includes(a.id))).toBe(true);
     expect(estado.partners.some((p: any) => p.tenantId === b.id)).toBe(false);
     await app.close();
+  });
+
+  it('El panel demo no consulta empresas persistentes con su sesión de demostración', async () => {
+    const buscarEmpresa = vi.spyOn(prismaBase.tenant, 'findFirst').mockResolvedValue(null);
+    const app = buildFastifyApp({ siiModo: 'simulado' });
+    try {
+      const cookie = await iniciarSesion(app, ADMIN);
+      const res = await app.inject({ method: 'GET', url: '/api/v1/dashboard/state', headers: { cookie } });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().finance).toMatchObject({ isPersistent: false, receivables: [], payables: [] });
+      expect(buscarEmpresa).not.toHaveBeenCalled();
+    } finally {
+      buscarEmpresa.mockRestore();
+      await app.close();
+    }
   });
 
   it('El modo demostración queda bloqueado en producción salvo FELINE_DEMO=on', async () => {

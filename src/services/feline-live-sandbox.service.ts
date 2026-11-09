@@ -302,7 +302,7 @@ export class FelineLiveSandboxStore {
     const expB64 = Buffer.from(expHex.length % 2 ? '0' + expHex : expHex, 'hex').toString('base64');
 
     const xmlAutorizacion = `<AUTORIZACION>
-<CAF version="1.0"><DA><RE>${params.rutEmisor}</RE><RS>${params.razonSocial}</RS><TD>${params.tipoDte}</TD><RNG><D>${params.desde}</D><H>${params.hasta}</H></RNG><FA>2026-10-01</FA><RSAPK><M>${modB64}</M><E>${expB64}</E></RSAPK><IDK>100</IDK></DA><FRMA algoritmo="SHA1withRSA">FirmaSiiAutorizacionFoliosFeline2026==</FRMA></CAF>
+<CAF version="1.0"><DA><RE>${params.rutEmisor}</RE><RS>${params.razonSocial}</RS><TD>${params.tipoDte}</TD><RNG><D>${params.desde}</D><H>${params.hasta}</H></RNG><FA>2026-10-01</FA><RSAPK><M>${modB64}</M><E>${expB64}</E></RSAPK><IDK>100</IDK></DA><FRMA algoritmo="SHA1withRSA">${Buffer.from('CAF sintético sin autorización SII').toString('base64')}</FRMA></CAF>
 <RSASK>${privateKey}</RSASK>
 </AUTORIZACION>`;
 

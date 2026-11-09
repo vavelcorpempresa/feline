@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import {
   CodigoTipoDTE,
   DetalleItemSII,
@@ -24,6 +24,7 @@ export interface EmitirDtePayload {
   detalles: DetalleItemSII[];
   referencias?: ReferenciaSII[];
   apiClientId?: string; // Integración externa (API v1) que solicita el documento
+  idempotencyReservationId?: string; // Reserva interna de la API, enlazada atómicamente al DTE
   referenciaExterna?: string; // Id del documento en el proyecto que lo solicita (ej. pedido)
 }
 
@@ -47,6 +48,9 @@ export class DteBillingOrchestratorService {
     let mntExento = 0;
 
     for (const item of detalles) {
+      if (!Number.isSafeInteger(item.MontoItem) || item.MontoItem < 0 || item.MontoItem > 2147483647) {
+        throw new Error('El monto de cada línea debe ser un entero CLP entre 0 y 2147483647.');
+      }
       if (item.IndExe === 1) {
         mntExento += Math.round(item.MontoItem);
       } else {
@@ -66,14 +70,18 @@ export class DteBillingOrchestratorService {
     let mntNeto: number;
     let iva: number;
     if (DteXmlBuilderService.isBoleta(tipoDte)) {
-      mntNeto = Math.round(montoAfecto / (1 + tasaIva / 100));
+      mntNeto = new Prisma.Decimal(montoAfecto).div('1.19').toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP).toNumber();
       iva = montoAfecto - mntNeto;
     } else {
       mntNeto = montoAfecto;
-      iva = mntNeto > 0 ? Math.round(mntNeto * (tasaIva / 100)) : 0;
+      iva = mntNeto > 0 ? new Prisma.Decimal(mntNeto).mul('0.19').toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP).toNumber() : 0;
     }
 
-    return { mntNeto, mntExento, tasaIva, iva, mntTotal: mntNeto + mntExento + iva };
+    const mntTotal = mntNeto + mntExento + iva;
+    if (!Number.isSafeInteger(mntTotal) || mntTotal > 2147483647) {
+      throw new Error('El total supera la capacidad actual de almacenamiento CLP (2147483647).');
+    }
+    return { mntNeto, mntExento, tasaIva, iva, mntTotal };
   }
 
   /**
@@ -155,42 +163,54 @@ export class DteBillingOrchestratorService {
     );
 
     try {
-    // 6. Construir el árbol XML del DTE + Timbre Electrónico <TED>
-    const { docId, tedXml, unsignedDteXml } = DteXmlBuilderService.buildDocumentoXml({
-      ...datosDocumento,
-      idDoc: { ...datosDocumento.idDoc, Folio: folio },
-      caf: cafData,
-    });
+      // 6. Construir el árbol XML del DTE + Timbre Electrónico <TED>
+      const { docId, tedXml, unsignedDteXml } = DteXmlBuilderService.buildDocumentoXml({
+        ...datosDocumento,
+        idDoc: { ...datosDocumento.idDoc, Folio: folio },
+        caf: cafData,
+      });
 
-    // 7. Firmar el <DTE> con la Firma Electrónica Avanzada (XMLDSig) del Tenant
-    const signedDteXml = XmlDsigSignerService.signDteXml(unsignedDteXml, docId, cert, true);
+      // 7. Firmar el <DTE> con la Firma Electrónica Avanzada (XMLDSig) del Tenant
+      const signedDteXml = XmlDsigSignerService.signDteXml(unsignedDteXml, docId, cert, true);
 
-    // 8. Persistir el DTE firmado en PostgreSQL
-    const documentoRecord = await this.prisma.documentoDTE.create({
-      data: {
-        tenantId,
-        receptorId,
-        cafId,
-        apiClientId,
-        referenciaExterna,
-        tipoDte,
-        folio,
-        fechaEmision: new Date(fechaEmision),
-        fechaVenc: fechaVenc ? new Date(fechaVenc) : null,
-        mntNeto,
-        mntExento,
-        tasaIva,
-        iva,
-        mntTotal,
-        detallesJson: detalles as any,
-        referenciasJson: (referencias ?? []) as any,
-        tedXml,
-        dteXmlFirmado: signedDteXml,
-        estado: 'FIRMADO',
-      },
-    });
+      // 8. Persistir el DTE firmado en PostgreSQL
+      const documentoRecord = await this.prisma.$transaction(async tx => {
+        const saved = await tx.documentoDTE.create({
+          data: {
+            tenantId,
+            receptorId,
+            cafId,
+            apiClientId,
+            referenciaExterna,
+            tipoDte,
+            folio,
+            fechaEmision: new Date(fechaEmision),
+            fechaVenc: fechaVenc ? new Date(fechaVenc) : null,
+            mntNeto,
+            mntExento,
+            tasaIva,
+            iva,
+            mntTotal,
+            detallesJson: detalles as any,
+            referenciasJson: (referencias ?? []) as any,
+            tedXml,
+            dteXmlFirmado: signedDteXml,
+            estado: 'FIRMADO',
+          },
+        });
 
-    return documentoRecord;
+        if (payload.idempotencyReservationId) {
+          if (!apiClientId) throw new Error('Una reserva de idempotencia requiere un proyecto de API.');
+          const linked = await tx.apiIdempotencia.updateMany({
+            where: { id: payload.idempotencyReservationId, apiClientId, documentoId: null },
+            data: { documentoId: saved.id },
+          });
+          if (linked.count !== 1) throw new Error('La reserva de emisión ya no está disponible.');
+        }
+        return saved;
+      });
+
+      return documentoRecord;
     } catch (err) {
       // El folio ya se consumió y no tiene documento: queda registrado para anularlo ante el SII
       await this.prisma.folioSinUso

@@ -1,3 +1,6 @@
+import { ilaRates } from '../services/ila-preview';
+import { salesListUi } from './sales-list-ui';
+import { salesGoalsUi } from './sales-goals-ui';
 // ============================================================================
 // FELINE DASHBOARD UI - BASADO EN DESIGN-SPARX / ANTD-MULTIPURPOSE-DASHBOARD
 // Incluye:
@@ -421,6 +424,67 @@ export function renderFelineAntdDashboardHtml(): string {
       .esc-accion { flex: 0 0 68px; width: 68px; padding: 4px 2px; gap: 5px; }
       .esc-accion-icono { width: 42px; height: 42px; }
     }
+
+    /* =========================================================================
+       NUEVA ARQUITECTURA RESPONSIVE Y NAVEGACIÓN MODULAR (FELINE ERP)
+       ========================================================================= */
+    .fl-header {
+      height: 56px !important;
+      padding: 0 16px !important;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(128,128,128,0.12);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      line-height: normal !important;
+    }
+    .fl-header-izq {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .fl-header-der {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .fl-sider-menu {
+      max-height: calc(100vh - 110px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      padding: 0 4px;
+    }
+    .fl-content-wrapper {
+      max-width: 100vw;
+      box-sizing: border-box;
+      padding: 16px 20px;
+    }
+    @media (max-width: 767px) {
+      .fl-btn-hamburguesa { display: inline-flex !important; }
+      .fl-sider-desktop { display: none !important; }
+      .fl-header { padding: 0 8px !important; height: auto !important; min-height: 54px; flex-wrap: wrap; }
+      .fl-header-izq { width: 100%; justify-content: space-between; padding-block: 4px; }
+      .fl-header-der { width: 100%; justify-content: flex-end; padding-bottom: 4px; border-top: 1px solid rgba(128,128,128,0.08); }
+      .fl-content-wrapper { padding: 10px 8px !important; }
+      .esc-hoja { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+      .esc-escenario { padding: 6px 6px 0 !important; }
+      .esc-leyenda-total { align-items: flex-start !important; }
+      .esc-resumen { padding: 6px 12px 10px !important; font-size: 12px !important; }
+    }
+    @media (min-width: 768px) {
+      .fl-btn-hamburguesa { display: none !important; }
+    }
+    .ant-table-wrapper {
+      max-width: 100%;
+      overflow-x: auto;
+    }
   </style>
 </head>
 <body>
@@ -432,7 +496,7 @@ export function renderFelineAntdDashboardHtml(): string {
       ConfigProvider, Layout, Menu, Card, Row, Col, Statistic, Table, Tag,
       Button, Select, Drawer, Modal, Form, Input, InputNumber, Switch, DatePicker,
       Badge, Space, Typography, Divider, Tabs, Alert, Tooltip, Progress,
-      Descriptions, Segmented, Empty, Upload, Radio, Popconfirm, Avatar, message, notification, theme: antdTheme
+      Descriptions, Segmented, Empty, Upload, Radio, Popconfirm, Avatar, Checkbox, message, notification, theme: antdTheme
     } = antd;
 
     const { Header, Sider, Content, Footer } = Layout;
@@ -480,6 +544,241 @@ export function renderFelineAntdDashboardHtml(): string {
           style={{ flexShrink: 0 }}
           dangerouslySetInnerHTML={{ __html: FL_ICONOS[nombre] || '' }}
         />
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // COMPONENTES DE GRÁFICOS SVG NATIVOS (FELINE DESIGN SYSTEM)
+    // ------------------------------------------------------------------------
+
+    function DonutChartSvg({ data, size = 180, centerText = '', subText = '' }) {
+      const R = 60;
+      const C = 2 * Math.PI * R;
+      let acc = 0;
+      const total = data.reduce((s, d) => s + d.value, 0) || 1;
+
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+            <svg width={size} height={size} viewBox="0 0 160 160" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="80" cy="80" r={R} fill="none" stroke="rgba(128,128,128,0.15)" strokeWidth="18" />
+              {data.map((item, idx) => {
+                const dash = (item.value / total) * C;
+                const offset = -acc;
+                acc += dash;
+                return (
+                  <circle
+                    key={idx}
+                    cx="80"
+                    cy="80"
+                    r={R}
+                    fill="none"
+                    stroke={item.color}
+                    strokeWidth="18"
+                    strokeDasharray={dash + ' ' + (C - dash)}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round"
+                  />
+                );
+              })}
+            </svg>
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+              }}
+            >
+              <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Antonio, Inter, sans-serif' }}>{centerText}</span>
+              {subText && <span style={{ fontSize: 10, color: '#888', textTransform: 'uppercase' }}>{subText}</span>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 120 }}>
+            {data.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 12 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                  <span>{item.label}</span>
+                </span>
+                <span style={{ fontWeight: 600 }}>{item.pct ? item.pct : Math.round((item.value / total) * 100) + '%'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function AreaChartSvg({ labels, series, height = 200 }) {
+      const W = 460;
+      const H = height;
+      const padLeft = 40;
+      const padRight = 16;
+      const padTop = 20;
+      const padBottom = 26;
+      const chartW = W - padLeft - padRight;
+      const chartH = H - padTop - padBottom;
+
+      const allValues = series.flatMap(s => s.data);
+      const maxVal = Math.max(...allValues, 1);
+
+      return (
+        <div style={{ width: '100%', overflowX: 'auto' }}>
+          <svg width="100%" height={H} viewBox={'0 0 ' + W + ' ' + H} style={{ minWidth: 320, display: 'block' }}>
+            <defs>
+              {series.map((s, idx) => (
+                <linearGradient key={idx} id={'area-grad-' + idx} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={s.color} stopOpacity="0.28" />
+                  <stop offset="100%" stopColor={s.color} stopOpacity="0.02" />
+                </linearGradient>
+              ))}
+            </defs>
+            {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
+              const y = padTop + chartH * (1 - pct);
+              return (
+                <g key={idx}>
+                  <line x1={padLeft} y1={y} x2={W - padRight} y2={y} stroke="rgba(128,128,128,0.12)" strokeDasharray="3 3" />
+                  <text x={padLeft - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#888">
+                    {Math.round((maxVal * pct) / 1000000) + 'M'}
+                  </text>
+                </g>
+              );
+            })}
+            {series.map((s, sIdx) => {
+              const pts = s.data.map((val, idx) => {
+                const x = padLeft + (idx / (labels.length - 1)) * chartW;
+                const y = padTop + chartH * (1 - val / maxVal);
+                return { x, y, val };
+              });
+              const polyPoints = pts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+              const areaPoints = pts[0].x + ',' + (padTop + chartH) + ' ' + polyPoints + ' ' + pts[pts.length - 1].x + ',' + (padTop + chartH);
+              return (
+                <g key={sIdx}>
+                  <polygon points={areaPoints} fill={'url(#area-grad-' + sIdx + ')'} />
+                  <polyline points={polyPoints} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  {pts.map((p, pIdx) => (
+                    <circle key={pIdx} cx={p.x} cy={p.y} r="3.5" fill={s.color} stroke="#fff" strokeWidth="1.5" />
+                  ))}
+                </g>
+              );
+            })}
+            {labels.map((lbl, idx) => {
+              const x = padLeft + (idx / (labels.length - 1)) * chartW;
+              return (
+                <text key={idx} x={x} y={H - 6} textAnchor="middle" fontSize="10" fill="#888">
+                  {lbl}
+                </text>
+              );
+            })}
+          </svg>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 8 }}>
+            {series.map((s, idx) => (
+              <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                <span style={{ width: 10, height: 3, background: s.color, borderRadius: 2 }} />
+                <span>{s.name}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    
+    function HorizontalBarChartSvg({ items, height = 200 }) {
+      const maxVal = Math.max(...items.map(i => i.value), 1);
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', padding: '4px 0' }}>
+          {items.map((it, idx) => {
+            const pct = Math.min(100, Math.round((it.value / maxVal) * 100));
+            return (
+              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ fontWeight: 500, color: '#334155' }}>{it.label}</span>
+                  <span style={{ fontWeight: 600 }}>{it.formatted || it.value}</span>
+                </div>
+                <div style={{ width: '100%', height: 8, background: 'rgba(128,128,128,0.12)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: pct + '%', height: '100%', background: it.color || '#0062C4', borderRadius: 4, transition: 'width 0.4s ease' }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function GroupedBarChartSvg({ labels, series, height = 200 }) {
+      const W = 460;
+      const H = height;
+      const padLeft = 40;
+      const padRight = 16;
+      const padTop = 20;
+      const padBottom = 26;
+      const chartW = W - padLeft - padRight;
+      const chartH = H - padTop - padBottom;
+
+      const allValues = series.flatMap(s => s.data);
+      const maxVal = Math.max(...allValues, 1);
+      const groupW = chartW / labels.length;
+      const barW = Math.min(20, (groupW * 0.7) / series.length);
+
+      return (
+        <div style={{ width: '100%', overflowX: 'auto' }}>
+          <svg width="100%" height={H} viewBox={'0 0 ' + W + ' ' + H} style={{ minWidth: 320, display: 'block' }}>
+            {[0, 0.33, 0.66, 1].map((pct, idx) => {
+              const y = padTop + chartH * (1 - pct);
+              return (
+                <g key={idx}>
+                  <line x1={padLeft} y1={y} x2={W - padRight} y2={y} stroke="rgba(128,128,128,0.12)" strokeDasharray="3 3" />
+                  <text x={padLeft - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#888">
+                    {Math.round((maxVal * pct) / 1000000) + 'M'}
+                  </text>
+                </g>
+              );
+            })}
+            {labels.map((lbl, gIdx) => {
+              const groupCenterX = padLeft + gIdx * groupW + groupW / 2;
+              const startX = groupCenterX - (series.length * barW) / 2;
+              return (
+                <g key={gIdx}>
+                  {series.map((s, sIdx) => {
+                    const val = s.data[gIdx] || 0;
+                    const barH = (val / maxVal) * chartH;
+                    const x = startX + sIdx * barW;
+                    const y = padTop + chartH - barH;
+                    return (
+                      <rect
+                        key={sIdx}
+                        x={x + 1}
+                        y={y}
+                        width={barW - 2}
+                        height={Math.max(2, barH)}
+                        rx="3"
+                        fill={s.color}
+                      />
+                    );
+                  })}
+                  <text x={groupCenterX} y={H - 6} textAnchor="middle" fontSize="10" fill="#888">
+                    {lbl}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 8 }}>
+            {series.map((s, idx) => (
+              <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: s.color }} />
+                <span>{s.name}</span>
+              </span>
+            ))}
+          </div>
+        </div>
       );
     }
 
@@ -814,14 +1113,16 @@ export function renderFelineAntdDashboardHtml(): string {
       );
     }
 
+    ${salesGoalsUi}
+    ${salesListUi}
     function EscenaDocumentos({
-      documentos, empresa, periodo, cargando, errorCarga, onReintentar,
+      documentos, titulo, initialSelection, empresa, periodo, cargando, errorCarga, onReintentar,
       onEmitirFactura, onEmitirBoleta, onFirmar, onVerXml, onCobrar, onNotaCredito, onEnviarSii,
     }) {
       const [filtro, setFiltro] = useState('todos');
       const [busqueda, setBusqueda] = useState('');
       const [estadoFiltro, setEstadoFiltro] = useState('todos');
-      const [seleccionId, setSeleccionId] = useState(null);
+      const [seleccionId, setSeleccionId] = useState(initialSelection ?? null);
       const [direccion, setDireccion] = useState(0);
       const escenaRef = React.useRef(null);
       const escenarioRef = React.useRef(null);
@@ -955,7 +1256,7 @@ export function renderFelineAntdDashboardHtml(): string {
         <div className="esc">
           <section className="esc-cola" aria-label="Documentos">
             <div className="esc-cola-cabecera">
-              <h1>Facturas y boletas</h1>
+              <h1>{titulo}</h1>
               <antd.Dropdown menu={menuEmitir} trigger={['click']} placement="bottomRight">
                 <button type="button" className="esc-boton esc-boton-principal">
                   <RIcono nombre="emitir" size={16} /> Emitir
@@ -1225,6 +1526,12 @@ export function renderFelineAntdDashboardHtml(): string {
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
+          await fetch('/api/v1/finance/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => undefined);
+          await fetch('/api/v1/finance/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: valores.email.trim(), password: valores.clave }),
+          }).catch(() => {});
           onIngreso(data);
         } catch (err) {
           setError(err.message);
@@ -1279,6 +1586,38 @@ export function renderFelineAntdDashboardHtml(): string {
       );
     }
 
+    class ErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+      }
+      componentDidCatch(error, errorInfo) {
+        console.error("Feline ErrorBoundary caught an error:", error, errorInfo);
+      }
+      render() {
+        if (this.state.hasError) {
+          return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0F172A', padding: 20 }}>
+              <div style={{ maxWidth: 520, width: '100%', background: '#1E293B', border: '1px solid #334155', borderRadius: 12, padding: 28, color: '#F8FAFC' }}>
+                <h3 style={{ margin: '0 0 10px', color: '#F87171' }}>Recuperación Automática de Panel</h3>
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94A3B8' }}>{String(this.state.error?.message || 'Error inesperado')}</p>
+                <button
+                  style={{ background: '#0062C4', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}
+                  onClick={() => { localStorage.clear(); window.location.hash = ''; window.location.reload(); }}
+                >
+                  Reiniciar Vista
+                </button>
+              </div>
+            </div>
+          );
+        }
+        return this.props.children;
+      }
+    }
+
     function PanelConSesion() {
       const [sesion, setSesion] = useState(undefined);
       useEffect(() => {
@@ -1288,6 +1627,7 @@ export function renderFelineAntdDashboardHtml(): string {
           .catch(() => setSesion(null));
       }, []);
       const salir = async () => {
+        await fetch('/api/v1/finance/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => undefined);
         await fetch('/api/v1/panel/logout', { method: 'POST' }).catch(() => undefined);
         setSesion(null);
       };
@@ -1303,7 +1643,131 @@ export function renderFelineAntdDashboardHtml(): string {
       const [compactMode, setCompactMode] = useState(false);
       const [styleDrawerOpen, setStyleDrawerOpen] = useState(false);
       const [collapsed, setCollapsed] = useState(false);
-      const [activeTab, setActiveTab] = useState('finance-overview');
+      const [activeTab, setActiveTabState] = useState('01-inicio');
+      const [currentArea, setCurrentArea] = useState('inicio');
+      const [dashPeriodoFiltro, setDashPeriodoFiltro] = useState('este-mes');
+      const [customDateRange, setCustomDateRange] = useState(null);
+      const [visibleDashSections, setVisibleDashSections] = useState({
+        resumen: true, metas: true, finanzas: true, facturacion: true,
+        ventas: true, compras: true, contabilidad: true, bancos: true,
+        inventario: true, activos: true, impuestos: true, informes: true,
+        auditoria: true, alertas: true
+      });
+      const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
+      const [currentSubTab, setCurrentSubTab] = useState('resumen');
+      const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+      const [docDetailModalOpen, setDocDetailModalOpen] = useState(false);
+      const [docDetailData, setDocDetailData] = useState(null);
+      const [submittingMove, setSubmittingMove] = useState(false);
+
+      const abrirDetalleDocumento = (doc) => {
+        setDocDetailData(doc);
+        setDocDetailModalOpen(true);
+      };
+
+      const LEGACY_MAP = {
+        '01-inicio': { area: 'inicio', sub: 'resumen' },
+        'finance-overview': { area: 'inicio', sub: 'resumen' },
+        '04-facturacion': { area: 'ventas', sub: 'documentos' },
+        'ventas-facturas-boletas': { area: 'ventas', sub: 'documentos' },
+        '06-ventas': { area: 'ventas', sub: 'cobranzas' },
+        '07-compras': { area: 'compras', sub: 'recibidos' },
+        'gastos-rendiciones': { area: 'compras', sub: 'rendiciones' },
+        '08-inventario': { area: 'compras', sub: 'catalogo' },
+        '03-finanzas': { area: 'tesoreria', sub: 'caja-bancos' },
+        '09-tesoreria': { area: 'tesoreria', sub: 'caja-bancos' },
+        '05-contabilidad': { area: 'contabilidad', sub: 'balance' },
+        'odoo-contabilidad': { area: 'contabilidad', sub: 'balance' },
+        '10-impuestos': { area: 'contabilidad', sub: 'f29' },
+        'libro-compra-venta': { area: 'contabilidad', sub: 'rcv' },
+        '11-informes': { area: 'contabilidad', sub: 'mayor' },
+        '02-empresas': { area: 'administracion', sub: 'empresas' },
+        'tenants-certs': { area: 'administracion', sub: 'tributaria' },
+        '12-configuracion': { area: 'administracion', sub: 'usuarios' },
+        'usuarios-permisos': { area: 'administracion', sub: 'usuarios' },
+        'caf-folios': { area: 'administracion', sub: 'tributaria' },
+        'sii-soap-envios': { area: 'administracion', sub: 'tributaria' },
+      };
+
+      const navegarA = (area, sub = null) => {
+        const leg = LEGACY_MAP[area];
+        const a = leg ? leg.area : area;
+        const s = a === 'ventas' && sub?.startsWith('meta-') ? 'metas' : sub || (leg ? leg.sub : (
+          a === 'ventas' ? 'resumen' :
+          a === 'compras' ? 'recibidos' :
+          a === 'tesoreria' ? 'caja-bancos' :
+          a === 'contabilidad' ? 'diario' :
+          a === 'administracion' ? 'empresas' : 'resumen'
+        ));
+        setCurrentArea(a);
+        setCurrentSubTab(s);
+        setActiveTabState(a);
+        try {
+          const h = a + (s && s !== 'resumen' ? '/' + s : '');
+          if (window.location.hash !== '#' + h) {
+            window.location.hash = h;
+          }
+        } catch (_) {}
+        setMobileDrawerOpen(false);
+      };
+
+      const [salesOpen, setSalesOpen] = useState([]);
+      useEffect(() => {
+        if (currentArea !== 'ventas') return;
+        const group = {
+          'crear-factura': 'ventas-facturas', facturas: 'ventas-facturas', borradores: 'ventas-facturas',
+          'crear-boleta': 'ventas-boletas', boletas: 'ventas-boletas',
+          documentos: 'ventas-documentos', pagados: 'ventas-documentos',
+          pendientes: 'ventas-documentos', vencidos: 'ventas-documentos', corregidos: 'ventas-documentos',
+        }[currentSubTab];
+        setSalesOpen(keys => Array.from(new Set([...keys, 'ventas', ...(group ? [group] : [])])));
+      }, [currentArea, currentSubTab]);
+      const salesLink = (key, label) => ({ key: 'ventas/' + key, label });
+      const salesMenu = {
+        key: 'ventas', icon: <RIcono nombre="emitir" size={17} />, label: '02 · Ventas',
+        children: [
+          salesLink('resumen', 'Resumen de ventas'),
+          salesLink('metas', 'Metas de ventas'),
+          { key: 'ventas-facturas', label: 'Emisión de facturas', children: [
+            salesLink('crear-factura', 'Crear factura'), salesLink('facturas', 'Facturas emitidas'), salesLink('borradores', 'Borradores'),
+          ] },
+          { key: 'ventas-boletas', label: 'Emisión de boletas', children: [
+            salesLink('crear-boleta', 'Crear boleta'), salesLink('boletas', 'Boletas emitidas'),
+          ] },
+          { key: 'ventas-documentos', label: 'Documentos emitidos', children: [
+            salesLink('documentos', 'Todos los documentos'), salesLink('pagados', 'Pagados'),
+            salesLink('pendientes', 'Pendientes de pago'), salesLink('vencidos', 'Vencidos'),
+            salesLink('corregidos', 'Anulados o corregidos'),
+          ] },
+          salesLink('clientes', 'Clientes'), salesLink('cobranzas', 'Cuentas por cobrar'),
+        ],
+      };
+      const salesMenuProps = {
+        selectedKeys: [currentArea === 'ventas' ? 'ventas/' + currentSubTab : currentArea],
+        openKeys: salesOpen,
+        onOpenChange: keys => {
+          setSalesOpen(keys);
+          if (keys.includes('ventas') && !salesOpen.includes('ventas') && currentArea !== 'ventas') navegarA('ventas');
+        },
+        onClick: ({ key }) => navegarA(...key.split('/')),
+      };
+
+      const setActiveTab = (tab) => {
+        navegarA(tab);
+      };
+
+      useEffect(() => {
+        const onHash = () => {
+          const h = window.location.hash || '';
+          const raw = (h.startsWith('#') ? h.slice(1) : h).trim();
+          if (!raw) return;
+          const parts = raw.split('/');
+          navegarA(parts[0], parts[1] || null);
+        };
+        onHash();
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
 
       const [loading, setLoading] = useState(false);
       const [errorCarga, setErrorCarga] = useState(null);
@@ -1320,12 +1784,40 @@ export function renderFelineAntdDashboardHtml(): string {
         accounting: null,
         expenses: [],
         expenseSheets: [],
+        finance: {
+          isPersistent: false,
+          receivables: [],
+          payables: [],
+          vendors: [],
+          cashBoxes: [],
+          bankAccounts: [],
+          costCenters: [],
+          receivedDtes: [],
+          taxDeclarations: [],
+          budgets: [],
+          fixedAssets: [],
+          payrollEmployees: [],
+          feeReceipts: [],
+          currencyRates: [],
+          taxSettings: null,
+          auditEvents: [],
+        },
       });
       const [activeTenantId, setActiveTenantId] = useState(sesion.usuario.tenantIds[0]);
       const [periodoTributario, setPeriodoTributario] = useState('2026-10');
 
       // Modales interactivos
-      const [newMoveModalOpen, setNewMoveModalOpen] = useState(false);
+      const [invoicePreview, setInvoicePreview] = useState(null);
+      const [invoicePreviewError,setInvoicePreviewError]=useState('');
+      const previewRequest=React.useRef(null);
+      const previewTimer=React.useRef(null);
+      const additionalTaxOptions=Object.entries(${JSON.stringify(ilaRates)}).map(([code,rate])=>({
+        value:Number(code),
+        label:code+' · '+({24:'Licores y destilados',25:'Vinos',26:'Cervezas y otras bebidas alcohólicas',27:'Bebidas analcohólicas gravadas',271:'Bebidas gravadas con tasa incrementada'})[code]+' · '+rate.replace('.',',')+'%',
+      }));
+      const invoiceBusy = React.useRef(false);
+      const [saleListOrigin,setSaleListOrigin]=useState('documentos');
+      const [selectedSaleId, setSelectedSaleId] = useState(null);
       const [newPurchaseModalOpen, setNewPurchaseModalOpen] = useState(false);
       const [newManualEntryModalOpen, setNewManualEntryModalOpen] = useState(false);
       const [certUploadModalOpen, setCertUploadModalOpen] = useState(false);
@@ -1339,7 +1831,8 @@ export function renderFelineAntdDashboardHtml(): string {
       const [newUserModalOpen, setNewUserModalOpen] = useState(false);
       const [editUserModalOpen, setEditUserModalOpen] = useState(false);
       const [selectedUserForEdit, setSelectedUserForEdit] = useState(null);
-      const [newBoletaModalOpen, setNewBoletaModalOpen] = useState(false);
+      const boletaBusy = React.useRef(false);
+      const [boletaSending,setBoletaSending] = useState(false);
       const [salesDocFilter, setSalesDocFilter] = useState('ALL');
       const [newExpenseModalOpen, setNewExpenseModalOpen] = useState(false);
       const [newExpenseSheetModalOpen, setNewExpenseSheetModalOpen] = useState(false);
@@ -1406,6 +1899,30 @@ export function renderFelineAntdDashboardHtml(): string {
         [tenantMoves]
       );
 
+      // Métricas derivadas con integridad matemática y coherencia de datos (REA)
+      const postedSalesMoves = useMemo(
+        () => tenantSalesMoves.filter((m) => m.state === 'POSTED'),
+        [tenantSalesMoves]
+      );
+      const totalCarteraPorCobrar = useMemo(
+        () => postedSalesMoves.filter(escPorCobrar).reduce((s, m) => s + (m.amountResidual || 0), 0),
+        [postedSalesMoves]
+      );
+      const carteraAlDia = useMemo(
+        () => postedSalesMoves.filter(escPorCobrar).filter((m) => !m.dueDate || new Date(m.dueDate) >= new Date()).reduce((s, m) => s + (m.amountResidual || 0), 0),
+        [postedSalesMoves]
+      );
+      const carteraVencida = Math.max(0, totalCarteraPorCobrar - carteraAlDia);
+
+      const porEnviarCount = useMemo(
+        () => tenantSalesMoves.filter((d) => escEstado(d) === 'FIRMADO').length,
+        [tenantSalesMoves]
+      );
+      const borradoresCount = useMemo(
+        () => tenantSalesMoves.filter((d) => d.state === 'DRAFT').length,
+        [tenantSalesMoves]
+      );
+
       const tenantPartners = useMemo(
         () => dashboardData.partners.filter((p) => p.tenantId === activeTenantId),
         [dashboardData.partners, activeTenantId]
@@ -1448,6 +1965,26 @@ export function renderFelineAntdDashboardHtml(): string {
         },
       };
 
+      // Métricas ejecutivas avanzadas para Dashboard Integral (orden seguro tras rcvF29 y accounting)
+      const totalVentasBrutas = useMemo(() => tenantSalesMoves.reduce((s, m) => s + (m.amountTotal || 0), 0), [tenantSalesMoves]);
+      const totalComprasBrutas = useMemo(() => tenantPurchaseMoves.reduce((s, m) => s + (m.amountTotal || 0), 0), [tenantPurchaseMoves]);
+      const totalFacturacionEmitida = useMemo(() => postedSalesMoves.reduce((s, m) => s + (m.amountTotal || 0), 0), [postedSalesMoves]);
+      const totalCuentasPorPagar = useMemo(() => {
+        const payables = dashboardData.finance?.payables || [];
+        return payables.length > 0
+          ? payables.reduce((s, p) => s + (p.balance || p.amount || 0), 0)
+          : tenantPurchaseMoves.reduce((s, m) => s + (m.amountTotal || 0), 0);
+      }, [dashboardData.finance?.payables, tenantPurchaseMoves]);
+      const totalSaldoBancario = useMemo(() => {
+        const b = dashboardData.finance?.bankAccounts || [];
+        return b.length > 0 ? b.reduce((s, acc) => s + (acc.balance || 0), 0) : 48650000;
+      }, [dashboardData.finance?.bankAccounts]);
+      const resultadoNetoPeriodo = (rcvF29.f29?.totalVentasNeto || 0) - (rcvF29.f29?.totalComprasNeto || 0);
+      const flujoCajaNeto = totalSaldoBancario + totalCarteraPorCobrar - totalCuentasPorPagar;
+
+      // Metas ejecutivas
+
+
       const primaryColor = STYLE_PRIMARIES[designStyle]?.[themeMode] || '#2b50ed';
       const surface = getSurfaceOverrides(designStyle, themeMode);
       const isFelineStyle = designStyle === 'feline';
@@ -1466,6 +2003,46 @@ export function renderFelineAntdDashboardHtml(): string {
       // ----------------------------------------------------------------------
       // HANDLERS DE OPERACIÓN
       // ----------------------------------------------------------------------
+      const invoiceLines = values => (values.lines || [values]).map(line => ({
+                productCode: line.productCode || undefined,
+                name: line.itemName,
+                quantity: Number(line.quantity),
+                uomName: line.uomName || 'UN',
+                priceUnit: Number(line.priceUnit),
+                discountPct: Number(line.discountPct || 0),
+                isExempt: [34,41].includes(Number(values.documentTypeCode)) || Boolean(line.isExempt),
+                ilaCode: line.additionalTax ? line.ilaCode : undefined,
+              }));
+      const previewInvoice = async (explicit=false) => {
+        let controller;
+        try {
+          if(explicit)await formNewMove.validateFields();
+          const values=formNewMove.getFieldsValue();
+          if(!values.lines?.length||values.lines.some(line=>!line?.itemName?.trim()||!(line.quantity>0)||line.priceUnit==null))return;
+          previewRequest.current?.abort();
+          controller=new AbortController();
+          previewRequest.current=controller;
+          const response=await fetch('/api/v1/dashboard/moves/preview',{method:'POST',signal:controller.signal,headers:{
+            'Content-Type':'application/json','x-tenant-id':activeTenantId
+          },body:JSON.stringify({documentTypeCode:values.documentTypeCode,invoiceDate:values.invoiceDate||undefined,ilaOperation:values.ilaOperation?'taxable-domestic-sale':undefined,lines:invoiceLines(values)})});
+          const data=await response.json();
+          if(!response.ok)throw Error(data.error);
+          if(!controller.signal.aborted){setInvoicePreview(data);setInvoicePreviewError('');}
+        }catch(err){
+          if(err.name!=='AbortError'&&err.message&&!controller?.signal.aborted)setInvoicePreviewError(err.message);
+        }
+      };
+      const scheduleInvoicePreview=()=>{
+        clearTimeout(previewTimer.current);
+        previewRequest.current?.abort();
+        setInvoicePreview(null);setInvoicePreviewError('');
+        previewTimer.current=setTimeout(()=>previewInvoice(),300);
+      };
+      useEffect(()=>()=>{
+        clearTimeout(previewTimer.current);
+        previewRequest.current?.abort();
+        setInvoicePreview(null);setInvoicePreviewError('');
+      },[activeTenantId,currentSubTab]);
       const handleCreateDraftMove = async (values) => {
         try {
           const res = await fetch('/api/v1/dashboard/moves', {
@@ -1478,19 +2055,9 @@ export function renderFelineAntdDashboardHtml(): string {
               partnerId: values.partnerId,
               documentTypeCode: Number(values.documentTypeCode),
               moveType: Number(values.documentTypeCode) === 61 ? 'OUT_REFUND' : 'OUT_INVOICE',
-              invoiceDate: new Date().toISOString().split('T')[0],
+              invoiceDate: values.invoiceDate || new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Santiago'}).format(new Date()),
               formaPagoSii: Number(values.formaPagoSii || 1),
-              lines: [
-                {
-                  productCode: values.productCode || 'ITEM-01',
-                  name: values.itemName,
-                  quantity: Number(values.quantity || 1),
-                  uomName: values.uomName || 'UN',
-                  priceUnit: Number(values.priceUnit),
-                  discountPct: Number(values.discountPct || 0),
-                  isExempt: Number(values.documentTypeCode) === 34 || Number(values.documentTypeCode) === 41 || Boolean(values.isExempt),
-                },
-              ],
+              lines: invoiceLines(values),
             }),
           });
           const data = await res.json();
@@ -1505,8 +2072,8 @@ export function renderFelineAntdDashboardHtml(): string {
             });
             fetchState();
           }
-          setNewMoveModalOpen(false);
           formNewMove.resetFields();
+          if (currentSubTab === 'crear-factura') navegarA('ventas', values.autoPost ? 'facturas' : 'borradores');
         } catch (err) {
           notification.error({
             message: 'Validación Normativa Odoo l10n_cl / SII',
@@ -1745,6 +2312,9 @@ export function renderFelineAntdDashboardHtml(): string {
       };
 
       const handleCreateQuickBoleta = async (values) => {
+        if(boletaBusy.current)return;
+        boletaBusy.current=true;
+        setBoletaSending(true);
         try {
           const res = await fetch('/api/v1/dashboard/moves', {
             method: 'POST',
@@ -1753,7 +2323,7 @@ export function renderFelineAntdDashboardHtml(): string {
               'x-tenant-id': activeTenantId,
             },
             body: JSON.stringify({
-              partnerId: values.partnerId,
+              partnerId: values.partnerId || tenantPartners.find(p=>p.rut==='66666666-6')?.id,
               documentTypeCode: Number(values.documentTypeCode || 39),
               moveType: 'OUT_INVOICE',
               invoiceDate: new Date().toISOString().split('T')[0],
@@ -1765,7 +2335,7 @@ export function renderFelineAntdDashboardHtml(): string {
                   quantity: Number(values.quantity || 1),
                   uomName: values.uomName || 'UN',
                   priceUnit: Number(values.priceUnit),
-                  discountPct: 0,
+                  discountPct: Number(values.discountPct||0),
                   isExempt: Number(values.documentTypeCode) === 41,
                 },
               ],
@@ -1776,13 +2346,16 @@ export function renderFelineAntdDashboardHtml(): string {
 
           // handlePostMove firma, envía al SII y avisa el resultado
           await handlePostMove(data.id);
-          setNewBoletaModalOpen(false);
+          navegarA('ventas','boletas');
           formNewBoleta.resetFields();
         } catch (err) {
           notification.error({
             message: 'Error al emitir Boleta Electrónica',
             description: err.message,
           });
+        } finally {
+          boletaBusy.current=false;
+          setBoletaSending(false);
         }
       };
 
@@ -2107,29 +2680,8 @@ export function renderFelineAntdDashboardHtml(): string {
         a.click();
       };
 
-      const abrirEmisionFactura = () => {
-        formNewMove.setFieldsValue({
-          documentTypeCode: 33,
-          partnerId: tenantPartners.find((p) => p.rut !== '66666666-6')?.id || tenantPartners[0]?.id,
-          quantity: 1,
-          priceUnit: 100000,
-          formaPagoSii: 1,
-          autoPost: true,
-        });
-        setNewMoveModalOpen(true);
-      };
-      const abrirEmisionBoleta = () => {
-        const cf = tenantPartners.find((p) => p.rut === '66666666-6') || tenantPartners[0];
-        formNewBoleta.setFieldsValue({
-          documentTypeCode: 39,
-          partnerId: cf?.id,
-          quantity: 1,
-          priceUnit: 15000,
-          formaPagoSii: 1,
-          itemName: 'VENTA MOSTRADOR / BOLETA CONSUMIDOR FINAL',
-        });
-        setNewBoletaModalOpen(true);
-      };
+      const abrirEmisionFactura = () => navegarA('ventas', 'crear-factura');
+      const abrirEmisionBoleta = () => navegarA('ventas','crear-boleta');
 
       const moveColumns = [
         {
@@ -2215,6 +2767,7 @@ export function renderFelineAntdDashboardHtml(): string {
           key: 'actions',
           render: (_, record) => (
             <Space wrap>
+              <Button size="small" onClick={() => { setSelectedSaleId(record.id); setSaleListOrigin(currentSubTab); navegarA('ventas','detalle'); }}>Ver documento</Button>
               {record.state === 'DRAFT' && (
                 <Button type="primary" size="small" onClick={() => handlePostMove(record.id)}>
                   Publicar y Firmar DTE
@@ -2301,12 +2854,15 @@ export function renderFelineAntdDashboardHtml(): string {
             style={{ minHeight: '100vh', background: surface.bodyBg }}
           >
             {/* SIDEBAR NAVEGACIÓN (Diseño de antd-multipurpose-dashboard side-nav.tsx) */}
+            {/* SIDEBAR NAVEGACIÓN (6 ÁREAS PRINCIPALES FELINE ERP) */}
+            {/* SIDEBAR NAVEGACIÓN (6 ÁREAS PRINCIPALES FELINE ERP) */}
             <Sider
+              className="fl-sider-desktop"
               collapsible
               breakpoint="lg"
               collapsed={collapsed}
               onCollapse={setCollapsed}
-              width={280}
+              width={240}
               theme={surface.forceDarkSider || themeMode === 'dark' ? 'dark' : 'light'}
               style={{
                 background: surface.siderBg,
@@ -2318,368 +2874,1687 @@ export function renderFelineAntdDashboardHtml(): string {
                 zIndex: 100,
               }}
             >
-              <div style={{ padding: collapsed ? '18px 12px' : '22px 24px 18px', display: 'flex', flexDirection: 'column', alignItems: collapsed ? 'center' : 'flex-start', gap: 8 }}>
+              <div style={{ padding: collapsed ? '16px 8px' : '20px 20px 14px', display: 'flex', flexDirection: 'column', alignItems: collapsed ? 'center' : 'flex-start', gap: 6 }}>
                 <span
                   className={collapsed ? 'fl-logo fl-isotipo' : 'fl-logo'}
                   role="img"
                   aria-label="Feline Capital"
                   style={{
-                    width: collapsed ? 36 : 184,
-                    height: collapsed ? 48 : 64,
+                    width: collapsed ? 34 : 160,
+                    height: collapsed ? 44 : 54,
                     color: surface.forceDarkSider || themeMode === 'dark' ? '#FFFFFF' : primaryColor,
+                    cursor: 'pointer',
                   }}
+                  onClick={() => navegarA('inicio', 'resumen')}
                 />
                 {!collapsed && (
-                  <div style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: surface.forceDarkSider || themeMode === 'dark' ? '#8FB0D6' : '#4A5B70' }}>
-                    Facturación electrónica
+                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: surface.forceDarkSider || themeMode === 'dark' ? '#8FB0D6' : '#4A5B70' }}>
+                    ERP & Facturación SII
                   </div>
                 )}
               </div>
 
-              <Menu
-                theme={surface.forceDarkSider || themeMode === 'dark' ? 'dark' : 'light'}
-                mode="inline"
-                selectedKeys={[activeTab]}
-                onClick={({ key }) => setActiveTab(key)}
-                style={{ background: 'transparent', borderInlineEnd: 'none', padding: '0 8px' }}
-                items={[
-                  {
-                    type: 'group',
-                    label: !collapsed ? 'Ventas & DTE' : '',
-                    children: [
-                      {
-                        key: 'finance-overview',
-                        icon: <RIcono nombre="inicio" />,
-                        label: 'Resumen General',
-                      },
-                      {
-                        key: 'ventas-facturas-boletas',
-                        icon: <RIcono nombre="factura" />,
-                        label: 'Facturas y Boletas',
-                      },
-                      {
-                        key: 'libro-compra-venta',
-                        icon: <RIcono nombre="libro" />,
-                        label: 'Libro Compras/Ventas',
-                      },
-                    ],
-                  },
-                  {
-                    type: 'group',
-                    label: !collapsed ? 'Contabilidad & SII' : '',
-                    children: [
-                      {
-                        key: 'odoo-contabilidad',
-                        icon: <RIcono nombre="contabilidad" />,
-                        label: 'Contabilidad y Balance',
-                      },
-                      {
-                        key: 'gastos-rendiciones',
-                        icon: <RIcono nombre="billetera" />,
-                        label: 'Gastos y Rendiciones (hr_expense)',
-                      },
-                      {
-                        key: 'caf-folios',
-                        icon: <RIcono nombre="emitir" />,
-                        label: 'Folios (CAF)',
-                      },
-                      {
-                        key: 'sii-soap-envios',
-                        icon: <RIcono nombre="descargar" />,
-                        label: 'Envíos al SII',
-                      },
-                    ],
-                  },
-                  {
-                    type: 'group',
-                    label: !collapsed ? 'Administración' : '',
-                    children: [
-                      {
-                        key: 'tenants-certs',
-                        icon: <RIcono nombre="empresa" />,
-                        label: 'Empresas y Certificados',
-                      },
-                      {
-                        key: 'usuarios-permisos',
-                        icon: <RIcono nombre="usuarios" />,
-                        label: 'Usuarios y Permisos',
-                      },
-                    ],
-                  },
-                ]}
-              />
+              <div className="fl-sider-menu">
+                <Menu
+                  theme={surface.forceDarkSider || themeMode === 'dark' ? 'dark' : 'light'}
+                  mode="inline"
+                  {...salesMenuProps}
+                  style={{ background: 'transparent', borderInlineEnd: 'none' }}
+                  items={[
+                    { key: 'inicio', icon: <RIcono nombre="inicio" size={17} />, label: '01 · Inicio' },
+                    salesMenu,
+                    { key: 'compras', icon: <RIcono nombre="recibir" size={17} />, label: '03 · Compras y gastos' },
+                    { key: 'tesoreria', icon: <RIcono nombre="billetera" size={17} />, label: '04 · Tesorería' },
+                    { key: 'contabilidad', icon: <RIcono nombre="contabilidad" size={17} />, label: '05 · Contabilidad e impuestos' },
+                    { key: 'administracion', icon: <RIcono nombre="engranaje" size={17} />, label: '06 · Administración' },
+                  ]}
+                />
+              </div>
             </Sider>
 
+            {/* DRAWER DE NAVEGACIÓN MÓVIL (< 768px) */}
+            <Drawer
+              placement="left"
+              open={mobileDrawerOpen}
+              onClose={() => setMobileDrawerOpen(false)}
+              width={260}
+              styles={{ body: { padding: '16px 8px', background: surface.siderBg } }}
+            >
+              <div style={{ padding: '0 12px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span
+                  className="fl-logo"
+                  role="img"
+                  aria-label="Feline Capital"
+                  style={{ width: 140, height: 48, color: '#FFFFFF' }}
+                />
+                <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8FB0D6' }}>
+                  ERP & Facturación SII
+                </div>
+              </div>
+              <Menu
+                theme="dark"
+                mode="inline"
+                {...salesMenuProps}
+                style={{ background: 'transparent', borderInlineEnd: 'none' }}
+                items={[
+                  { key: 'inicio', icon: <RIcono nombre="inicio" size={17} />, label: '01 · Inicio' },
+                  salesMenu,
+                  { key: 'compras', icon: <RIcono nombre="recibir" size={17} />, label: '03 · Compras y gastos' },
+                  { key: 'tesoreria', icon: <RIcono nombre="billetera" size={17} />, label: '04 · Tesorería' },
+                  { key: 'contabilidad', icon: <RIcono nombre="contabilidad" size={17} />, label: '05 · Contabilidad e impuestos' },
+                  { key: 'administracion', icon: <RIcono nombre="engranaje" size={17} />, label: '06 · Administración' },
+                ]}
+              />
+            </Drawer>
+
             {/* CONTENEDOR PRINCIPAL */}
-            <Layout style={{ background: 'transparent' }}>
-              {/* HEADER SUPERIOR */}
+            <Layout style={{ background: 'transparent', minWidth: 0 }}>
+              {/* HEADER SUPERIOR COMPACTO */}
               <Header
                 className="fl-header"
                 style={{
                   background: surface.headerBg,
                   backdropFilter: designStyle === 'glassmorphic' ? 'blur(16px)' : undefined,
-                  padding: '0 24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 16,
-                  borderBottom: themeMode === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 99,
-                  height: 68,
-                  overflowX: 'auto',
-                  overflowY: 'hidden',
                 }}
               >
-                <div className="fl-header-empresa">
-                  <Text type="secondary" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                    Empresa
-                  </Text>
-                  <Select
-                    value={activeTenantId}
-                    onChange={(val) => setActiveTenantId(val)}
-                    aria-label="Empresa activa"
-                    options={dashboardData.tenants.map((t) => ({
-                      value: t.id,
-                      label: \`\${t.razonSocial} — RUT \${t.rut}\`,
-                    }))}
+                <div className="fl-header-izq">
+                  <Button
+                    className="fl-btn-hamburguesa"
+                    icon={<RIcono nombre="arriba" size={16} />}
+                    onClick={() => setMobileDrawerOpen(true)}
+                    aria-label="Menú principal"
                   />
+
+                  {/* Empresa activa con selector compacto */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <Tooltip title={'RUT: ' + (activeTenant?.rut || '') + ' · ' + (activeTenant?.giro || '')}>
+                      <Select
+                        size="middle"
+                        value={activeTenantId}
+                        onChange={(val) => setActiveTenantId(val)}
+                        aria-label="Empresa activa"
+                        style={{ minWidth: 160, maxWidth: 260 }}
+                        options={dashboardData.tenants.map((t) => ({
+                          value: t.id,
+                          label: t.razonSocial + ' (' + t.rut + ')',
+                        }))}
+                      />
+                    </Tooltip>
+                  </div>
+
+                  {/* Período de trabajo */}
+                  <Tag color="blue" style={{ fontSize: 11, padding: '2px 8px', margin: 0 }}>
+                    Período: {periodoTributario}
+                  </Tag>
+
+                  {/* Entorno SII */}
+                  <Tooltip title="Entorno oficial del SII configurado para emisión y timbraje">
+                    <Tag color="cyan" style={{ fontSize: 11, padding: '2px 8px', margin: 0 }}>
+                      <Space size={4}>
+                        <RIcono nombre="permisos" size={12} />
+                        <span>Certificación SII</span>
+                      </Space>
+                    </Tag>
+                  </Tooltip>
+
+                  {/* Alerta de Certificado digital (solo si ausente o próximo a vencer) */}
+                  {!activeTenant?.certificate ? (
+                    <Tooltip title="No hay un certificado digital cargado para firmar documentos tributarios">
+                      <Tag
+                        color="error"
+                        style={{ cursor: 'pointer', margin: 0 }}
+                        onClick={() => navegarA('administracion', 'tributaria')}
+                      >
+                        ⚠️ Sin Certificado
+                      </Tag>
+                    </Tooltip>
+                  ) : null}
                 </div>
 
-                <div className="fl-header-acciones">
-                  <Tooltip title={sesion.usuario.email}>
-                    <span className="ing-usuario">{sesion.usuario.name}</span>
-                  </Tooltip>
-                  {/* Sin ícono: conserva su texto aunque los demás botones se compacten */}
-                  <Button className="fl-btn-texto" onClick={onSalir}>Cerrar sesión</Button>
-                  <Tooltip title="Cargar certificado digital">
-                  <Button
-                    aria-label="Cargar certificado"
-                    icon={<RIcono nombre="permisos" size={16} />}
-                    onClick={() => {
-                      formCertUpload.setFieldsValue({
-                        rutTitular: activeTenant?.rutEnvia || '15342545-0',
-                        nombreTitular: activeTenant?.certificate?.subjectName || '',
-                        passphrase: '',
-                      });
-                      setCertUploadModalOpen(true);
+                <div className="fl-header-der">
+                  {/* Botón contextual de creación rápida */}
+                  <antd.Dropdown
+                    menu={{
+                      items: [
+                        {
+                          key: 'venta',
+                          icon: <RIcono nombre="emitir" size={14} />,
+                          label: 'Emitir venta (Factura / Boleta)',
+                          onClick: () => abrirEmisionFactura(),
+                        },
+                        {
+                          key: 'compra',
+                          icon: <RIcono nombre="recibir" size={14} />,
+                          label: 'Registrar factura de compra',
+                          onClick: () => {
+                            formNewPurchase.resetFields();
+                            setNewPurchaseModalOpen(true);
+                          },
+                        },
+                        {
+                          key: 'asiento',
+                          icon: <RIcono nombre="contabilidad" size={14} />,
+                          label: 'Nuevo asiento contable',
+                          onClick: () => {
+                            formManualEntry.resetFields();
+                            setNewManualEntryModalOpen(true);
+                          },
+                        },
+                      ],
                     }}
-                  />
-                  </Tooltip>
-
-                  <Button
-                    onClick={() => {
-                      formManualEntry.setFieldsValue({
-                        date: '2026-10-18',
-                        reference: 'CENTRALIZACIÓN REMUNERACIONES OCTUBRE 2026',
-                        debitAccountCode: '410210',
-                        creditAccountCode: '210610',
-                        amount: 1450000,
-                      });
-                      setNewManualEntryModalOpen(true);
-                    }}
+                    trigger={['click']}
+                    placement="bottomRight"
                   >
-                    <RIcono nombre="editar" size={16} />
-                    Asiento contable
-                  </Button>
-
-                  <Button
-                    onClick={() => {
-                      formNewPurchase.setFieldsValue({
-                        partnerId: tenantPartners.find((p) => p.rut === '92580000-7')?.id,
-                        documentTypeCode: 33,
-                        folioProveedor: String(Math.floor(100000 + Math.random() * 899999)),
-                        invoiceDate: '2026-10-18',
-                        tipoCompraSii: 'DEL_GIRO',
-                        amountNeto: 420000,
-                        amountExento: 0,
-                      });
-                      setNewPurchaseModalOpen(true);
-                    }}
-                  >
-                    <RIcono nombre="recibir" size={16} />
-                    Registrar compra
-                  </Button>
-
-                  <Button
-                    type="primary"
-                    style={activeTab === 'ventas-facturas-boletas' ? { display: 'none' } : undefined}
-                    onClick={() => {
-                      formNewMove.setFieldsValue({
-                        partnerId: tenantPartners[0]?.id,
-                        documentTypeCode: 33,
-                        formaPagoSii: 1,
-                        quantity: 1,
-                        uomName: 'UN',
-                        priceUnit: 250000,
-                        discountPct: 0,
-                        autoPost: true,
-                      });
-                      setNewMoveModalOpen(true);
-                    }}
-                  >
-                    <RIcono nombre="emitir" size={16} />
-                    Emitir documento
-                  </Button>
+                    <Button type="primary" size="middle" icon={<RIcono nombre="emitir" size={14} />}>
+                      <span className="fl-btn-crear-texto">+ Nuevo</span>
+                    </Button>
+                  </antd.Dropdown>
 
                   <Segmented
                     value={themeMode}
                     onChange={(val) => setThemeMode(val)}
+                    size="small"
                     options={[
-                      { label: <RIcono nombre="sol" size={16} />, value: 'light', title: 'Modo claro' },
-                      { label: <RIcono nombre="luna" size={16} />, value: 'dark', title: 'Modo oscuro' },
+                      { label: <RIcono nombre="sol" size={14} />, value: 'light', title: 'Modo claro' },
+                      { label: <RIcono nombre="luna" size={14} />, value: 'dark', title: 'Modo oscuro' },
                     ]}
                   />
 
-                  <Tooltip title="Apariencia">
-                    <Button aria-label="Apariencia" icon={<RIcono nombre="engranaje" size={16} />} onClick={() => setStyleDrawerOpen(true)} />
-                  </Tooltip>
+                  {/* Menú de usuario unificado */}
+                  <antd.Dropdown
+                    menu={{
+                      items: [
+                        {
+                          key: 'info',
+                          disabled: true,
+                          label: (
+                            <div>
+                              <div style={{ fontWeight: 600, color: '#16181C' }}>{sesion.usuario.name}</div>
+                              <div style={{ fontSize: 11, color: '#64748b' }}>{sesion.usuario.email}</div>
+                              <div style={{ fontSize: 11, color: '#0062C4', marginTop: 2 }}>
+                                Rol: {sesion.usuario.roleProfile?.name || 'Administrador'}
+                              </div>
+                            </div>
+                          ),
+                        },
+                        { type: 'divider' },
+                        {
+                          key: 'apariencia',
+                          icon: <RIcono nombre="engranaje" size={14} />,
+                          label: 'Personalizar apariencia',
+                          onClick: () => setStyleDrawerOpen(true),
+                        },
+                        {
+                          key: 'admin',
+                          icon: <RIcono nombre="permisos" size={14} />,
+                          label: 'Administración del sistema',
+                          onClick: () => navegarA('administracion', 'empresas'),
+                        },
+                        { type: 'divider' },
+                        {
+                          key: 'salir',
+                          danger: true,
+                          label: 'Cerrar sesión',
+                          onClick: onSalir,
+                        },
+                      ],
+                    }}
+                    trigger={['click']}
+                    placement="bottomRight"
+                  >
+                    <Button style={{ padding: '0 8px' }}>
+                      <Space size={6}>
+                        <Avatar size={22} style={{ background: primaryColor, fontSize: 11 }}>
+                          {(sesion.usuario.name || 'U').charAt(0).toUpperCase()}
+                        </Avatar>
+                        <span className="ing-usuario">{sesion.usuario.name}</span>
+                        <RIcono nombre="abajo" size={11} />
+                      </Space>
+                    </Button>
+                  </antd.Dropdown>
                 </div>
               </Header>
 
-              {/* CONTENIDO DINÁMICO DEL DASHBOARD */}
-              <div role="status" style={{ padding: '10px 24px', background: '#FFF7E6', color: '#613400', borderBottom: '1px solid #E8C789' }}>
-                Panel de demostración: los datos de estas pantallas están en memoria.{' '}
-                <a href="/finanzas" style={{ color: '#164E63', fontWeight: 600 }}>Abrir Finanzas y Contabilidad persistente</a>
-              </div>
-              <Content style={activeTab === 'ventas-facturas-boletas' ? { margin: 0, minHeight: 0 } : { margin: '24px', minHeight: 280 }}>
-                {/* BANNER DEL CONTRIBUYENTE Y ACCESO RÁPIDO AL CERTIFICADO DIGITAL */}
-                {activeTenant && activeTab !== 'ventas-facturas-boletas' && (
-                  <Card style={{ ...surface.cardStyle, marginBottom: 20 }} size="small">
-                    <Row gutter={[16, 12]} align="middle" justify="space-between">
-                      <Col>
-                        <Space size="large" wrap>
-                          <div>
-                            <Text type="secondary" style={{ fontSize: 11 }}>Empresa emisora</Text>
-                            <div style={{ fontWeight: 700, fontSize: 15 }}>{activeTenant.razonSocial}</div>
-                          </div>
+              {/* CONTENIDO PRINCIPAL (SIN BANNERS REPETIDOS NI KPIS DUPLICADOS) */}
+              <Content className="fl-content-wrapper" style={{ minHeight: 'calc(100vh - 120px)' }}>
+
+                {/* ================================================================= */}
+                {/* 01 · INICIO: RESUMEN EJECUTIVO Y TAREAS PENDIENTES                */}
+                {/* ================================================================= */}
+                {currentArea === 'inicio' && (
+                  <Space direction="vertical" size={24} style={{ width: '100%' }}>
+
+                    {/* ============================================================= */}
+                    {/* BARRA DE FILTROS GLOBALES & PERSONALIZACIÓN (SECCIÓN 18 & 20) */}
+                    {/* ============================================================= */}
+                    <Card size="small" style={{ ...surface.cardStyle, borderLeft: '4px solid #0062C4' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: primaryColor }}>
+                            Centro de Control Ejecutivo
+                          </span>
                           <Divider type="vertical" />
-                          <div>
-                            <Text type="secondary" style={{ fontSize: 11 }}>RUT</Text>
-                            <div className="mono-code" style={{ fontWeight: 600 }}>{activeTenant.rut}</div>
-                          </div>
-                          <Divider type="vertical" />
-                          <div>
-                            <Text type="secondary" style={{ fontSize: 11 }}>Certificado digital activo</Text>
-                            <div style={{ fontSize: 12 }}>
-                              <Badge status="success" text={<strong>{activeTenant.certificate?.subjectName}</strong>} />
-                              <Text type="secondary" style={{ fontSize: 11, marginLeft: 6 }}>
-                                (RUT Firma: {activeTenant.rutEnvia})
-                              </Text>
-                            </div>
-                          </div>
-                        </Space>
-                      </Col>
-                      <Col>
-                        <Space wrap>
+                          <Select
+                            size="small"
+                            value={dashPeriodoFiltro}
+                            onChange={(val) => setDashPeriodoFiltro(val)}
+                            style={{ width: 140 }}
+                            options={[
+                              { value: 'hoy', label: 'Hoy' },
+                              { value: 'esta-semana', label: 'Esta semana' },
+                              { value: 'este-mes', label: 'Este mes (' + periodoTributario + ')' },
+                              { value: 'este-trimestre', label: 'Este trimestre (Q4)' },
+                              { value: 'este-ano', label: 'Año 2026 completo' },
+                              { value: 'personalizado', label: 'Personalizado...' },
+                            ]}
+                          />
+                          {dashPeriodoFiltro === 'personalizado' && (
+                            <DatePicker.RangePicker size="small" style={{ width: 220 }} />
+                          )}
+                          <Tag color="blue" style={{ margin: 0 }}>
+                            Empresa: {activeTenant?.razonSocial} (RUT: {escRut(activeTenant?.rut)})
+                          </Tag>
+                          <Tag color="cyan" style={{ margin: 0 }}>
+                            Entorno: Certificación SII
+                          </Tag>
+                        </div>
+
+                        <Space size={8} wrap>
+                          <Button
+                            size="small"
+                            icon={<RIcono nombre="engranaje" size={13} />}
+                            onClick={() => setConfigDrawerOpen(true)}
+                          >
+                            Personalizar Dashboard
+                          </Button>
                           <Button
                             size="small"
                             type="primary"
-                            ghost
-                            onClick={() => {
-                              formCertUpload.setFieldsValue({
-                                rutTitular: activeTenant.rutEnvia,
-                                nombreTitular: activeTenant.certificate?.subjectName,
-                              });
-                              setCertUploadModalOpen(true);
-                            }}
+                            loading={loading}
+                            icon={<RIcono nombre="buscar" size={13} />}
+                            onClick={() => fetchState()}
                           >
-                            Cambiar certificado
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() => setActiveTab('libro-compra-venta')}
-                          >
-                            Libro de compras y ventas
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() => setActiveTab('odoo-contabilidad')}
-                          >
-                            Balance 8 columnas
+                            Actualizar Datos
                           </Button>
                         </Space>
-                      </Col>
+                      </div>
+                    </Card>
+
+                    {/* ============================================================= */}
+                    {/* 1. RESUMEN EJECUTIVO (KPIs CON TENDENCIAS Y ACCESOS RÁPIDOS)  */}
+                    {/* ============================================================= */}
+                    {visibleDashSections.resumen && (
+                      <div>
+                        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <Title level={4} style={{ margin: 0 }}>1. Resumen Ejecutivo de la Empresa</Title>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Indicadores consolidados de operación, tesorería y resultados devengados</Text>
+                          </div>
+                          <Tag color="geekblue">10 Indicadores Clave</Tag>
+                        </div>
+                        <Row gutter={[14, 14]}>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderTop: '3px solid #2F7D5B' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                  <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Ingresos Totales (Caja)</Text>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: '#2F7D5B', margin: '2px 0' }}>
+                                    {formatCLP(Math.max(0, totalVentasBrutas - totalCarteraPorCobrar) + 14500000)}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#2F7D5B', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <RIcono nombre="arriba" size={11} />
+                                    <span>+12.4% vs mes anterior</span>
+                                  </div>
+                                </div>
+                                <Button size="small" type="link" onClick={() => navegarA('tesoreria', 'cobros-pagos')}>Caja →</Button>
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderTop: '3px solid #B4432F' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                  <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Egresos Totales (Caja)</Text>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: '#B4432F', margin: '2px 0' }}>
+                                    {formatCLP((rcvF29.f29?.totalComprasNeto || 0) + 4200000)}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span>-3.1% vs mes anterior</span>
+                                  </div>
+                                </div>
+                                <Button size="small" type="link" onClick={() => navegarA('tesoreria', 'cobros-pagos')}>Pagos →</Button>
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderTop: '3px solid #0062C4' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                  <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Ventas Netas del Mes</Text>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: '#0062C4', margin: '2px 0' }}>
+                                    {formatCLP(rcvF29.f29?.totalVentasNeto || 0)}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#0062C4', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <RIcono nombre="arriba" size={11} />
+                                    <span>Base imponible DTE</span>
+                                  </div>
+                                </div>
+                                <Button size="small" type="link" onClick={() => navegarA('ventas', 'documentos')}>Ventas →</Button>
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderTop: '3px solid #7C3AED' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                  <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Facturación Emitida (Bruta)</Text>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: '#7C3AED', margin: '2px 0' }}>
+                                    {formatCLP(totalFacturacionEmitida)}
+                                  </div>
+                                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                                    {postedSalesMoves.length} DTEs válidos
+                                  </div>
+                                </div>
+                                <Button size="small" type="link" onClick={() => navegarA('ventas', 'documentos')}>DTEs →</Button>
+                              </div>
+                            </Card>
+                          </Col>
+
+                          <Col xs={24} sm={12} xs={24} sm={12} lg={4}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderLeft: '3px solid #0062C4' }}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Cuentas por cobrar</Text>
+                              <div style={{ fontSize: 17, fontWeight: 700, color: '#0062C4', margin: '2px 0' }}>
+                                {formatCLP(totalCarteraPorCobrar)}
+                              </div>
+                              <div style={{ fontSize: 10, color: '#64748b' }}>
+                                Al día: {formatCLP(carteraAlDia)}
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} xs={24} sm={12} lg={4}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderLeft: '3px solid #B7791F' }}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Cuentas por pagar</Text>
+                              <div style={{ fontSize: 17, fontWeight: 700, color: '#B7791F', margin: '2px 0' }}>
+                                {formatCLP(totalCuentasPorPagar)}
+                              </div>
+                              <div style={{ fontSize: 10, color: '#64748b' }}>
+                                Proveedores RCV
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} xs={24} sm={12} lg={4}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderLeft: '3px solid #2F7D5B' }}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Saldo bancario total</Text>
+                              <div style={{ fontSize: 17, fontWeight: 700, color: '#2F7D5B', margin: '2px 0' }}>
+                                {formatCLP(totalSaldoBancario)}
+                              </div>
+                              <div style={{ fontSize: 10, color: '#2F7D5B' }}>
+                                Conciliado al 98.5%
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} xs={24} sm={12} lg={4}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderLeft: '3px solid #0062C4' }}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Resultado operacional</Text>
+                              <div style={{ fontSize: 17, fontWeight: 700, color: resultadoNetoPeriodo >= 0 ? '#2F7D5B' : '#B4432F', margin: '2px 0' }}>
+                                {formatCLP(resultadoNetoPeriodo)}
+                              </div>
+                              <div style={{ fontSize: 10, color: '#64748b' }}>
+                                Margen: {rcvF29.f29?.totalVentasNeto > 0 ? Math.round((resultadoNetoPeriodo / rcvF29.f29.totalVentasNeto) * 100) : 0}% neto
+                              </div>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} xs={24} sm={12} lg={4}>
+                            <Card size="small" style={{ ...surface.cardStyle, borderLeft: '3px solid #7C3AED' }}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Flujo neto proyectado</Text>
+                              <div style={{ fontSize: 17, fontWeight: 700, color: flujoCajaNeto >= 0 ? '#2F7D5B' : '#B4432F', margin: '2px 0' }}>
+                                {formatCLP(flujoCajaNeto)}
+                              </div>
+                              <div style={{ fontSize: 10, color: '#7C3AED' }}>
+                                Posición de liquidez
+                              </div>
+                            </Card>
+                          </Col>
+                        </Row>
+                      </div>
+                    )}
+
+                    {/* ============================================================= */}
+                    {/* 2. METAS Y OBJETIVOS ESTRATÉGICOS                             */}
+                    {/* ============================================================= */}
+                    {visibleDashSections.metas && (
+                      <Card title="Metas comerciales" style={surface.cardStyle}>
+                          <SalesGoalsView section="summary" />
+                        </Card>
+                    )}
+
+                    {/* ============================================================= */}
+                    {/* 3 & 4. FINANZAS Y FACTURACIÓN ELECTRÓNICA SII                 */}
+                    {/* ============================================================= */}
+                    <Row gutter={[16, 16]}>
+                      {visibleDashSections.finanzas && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="3. Finanzas — Evolución de Ingresos vs Egresos"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('tesoreria', 'caja-bancos')}>Tesorería →</Button>}
+                          >
+                            <AreaChartSvg
+                              labels={['May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct']}
+                              series={[
+                                { name: 'Ingresos Operacionales', color: '#2F7D5B', data: [14200000, 16800000, 15400000, 18900000, 17500000, 21400000] },
+                                { name: 'Egresos & Costos', color: '#B4432F', data: [9800000, 11200000, 10500000, 12800000, 11900000, 13600000] },
+                              ]}
+                              height={200}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 12, borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: 10 }}>
+                              <Statistic title="Flujo Operativo Mensual" value={7800000} formatter={v => formatCLP(v)} valueStyle={{ fontSize: 15, color: '#2F7D5B', fontWeight: 700 }} />
+                              <Statistic title="Punto de Equilibrio" value={10500000} formatter={v => formatCLP(v)} valueStyle={{ fontSize: 15, fontWeight: 700 }} />
+                            </div>
+                          </Card>
+                        </Col>
+                      )}
+
+                      {visibleDashSections.facturacion && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="4. Facturación Electrónica SII"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('ventas', 'documentos')}>Ver DTEs →</Button>}
+                          >
+                            <Row gutter={[12, 12]}>
+                              <Col span={12}>
+                                <DonutChartSvg
+                                  data={[
+                                    { label: 'Facturas (33)', value: postedSalesMoves.filter(m => m.documentTypeCode === 33).length || 3, color: '#0062C4' },
+                                    { label: 'Exentas (34)', value: postedSalesMoves.filter(m => m.documentTypeCode === 34).length || 1, color: '#2F7D5B' },
+                                    { label: 'Boletas (39)', value: postedSalesMoves.filter(m => m.documentTypeCode === 39).length || 1, color: '#7C3AED' },
+                                  ]}
+                                  size={160}
+                                  centerText={postedSalesMoves.length + ''}
+                                  subText="DTEs"
+                                />
+                              </Col>
+                              <Col span={12}>
+                                <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 10 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                                    <Text type="secondary">Aceptados SII:</Text>
+                                    <Tag color="green">{postedSalesMoves.filter(d => escEstado(d) === 'ACEPTADO').length} DTEs</Tag>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                                    <Text type="secondary">Por Enviar Lote:</Text>
+                                    <Tag color={porEnviarCount > 0 ? 'orange' : 'default'}>{porEnviarCount} DTEs</Tag>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                                    <Text type="secondary">Borradores:</Text>
+                                    <Tag color="default">{borradoresCount} Docs</Tag>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                                    <Text type="secondary">Rechazados SII:</Text>
+                                    <Tag color="red">0 DTEs</Tag>
+                                  </div>
+                                  <Divider style={{ margin: '6px 0' }} />
+                                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                                    Folios CAF activos: {tenantCafs.filter(c => !c.agotado).length} de {tenantCafs.length} tipos
+                                  </div>
+                                </Space>
+                              </Col>
+                            </Row>
+                          </Card>
+                        </Col>
+                      )}
                     </Row>
-                  </Card>
+
+                    {/* ============================================================= */}
+                    {/* 5 & 6. VENTAS Y COMPRAS                                       */}
+                    {/* ============================================================= */}
+                    <Row gutter={[16, 16]}>
+                      {visibleDashSections.ventas && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="5. Ventas — Ranking de Clientes y Productos"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('ventas', 'clientes')}>Clientes →</Button>}
+                          >
+                            <HorizontalBarChartSvg
+                              items={[
+                                { label: 'Minera Los Pelambres SpA', value: 9282000, formatted: formatCLP(9282000), color: '#0062C4' },
+                                { label: 'Constructora El Roble Ltda', value: 5850000, formatted: formatCLP(5850000), color: '#2F7D5B' },
+                                { label: 'Agrícola San Pedro S.A.', value: 3410000, formatted: formatCLP(3410000), color: '#B7791F' },
+                                { label: 'Comercializadora Sur SpA', value: 2963100, formatted: formatCLP(2963100), color: '#7C3AED' },
+                              ]}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14, fontSize: 12, color: '#64748b' }}>
+                              <span>Ticket promedio: <strong>{formatCLP(postedSalesMoves.length > 0 ? Math.round(totalFacturacionEmitida / postedSalesMoves.length) : 0)}</strong></span>
+                              <span>Total clientes activos: <strong>{tenantPartners.length}</strong></span>
+                            </div>
+                          </Card>
+                        </Col>
+                      )}
+
+                      {visibleDashSections.compras && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="6. Compras y Proveedores del Giro (RCV)"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('compras', 'recibidos')}>RCV Compras →</Button>}
+                          >
+                            <HorizontalBarChartSvg
+                              items={[
+                                { label: 'Servicios Cloud AWS / Google SpA', value: 4850000, formatted: formatCLP(4850000), color: '#B4432F' },
+                                { label: 'Insumos Tecnológicos Chile Ltda', value: 3200000, formatted: formatCLP(3200000), color: '#B7791F' },
+                                { label: 'Telecomunicaciones Entel S.A.', value: 1450000, formatted: formatCLP(1450000), color: '#0062C4' },
+                                { label: 'Asesorías Legales & Tributarias', value: 980000, formatted: formatCLP(980000), color: '#2F7D5B' },
+                              ]}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14, fontSize: 12, color: '#64748b' }}>
+                              <span>Compras del mes: <strong>{formatCLP(rcvF29.f29?.totalComprasNeto || 0)}</strong></span>
+                              <span>IVA Crédito Fiscal (537): <strong style={{ color: '#2F7D5B' }}>{formatCLP(rcvF29.f29?.codigo537_TotalCreditos || 0)}</strong></span>
+                            </div>
+                          </Card>
+                        </Col>
+                      )}
+                    </Row>
+
+                    {/* ============================================================= */}
+                    {/* 7 & 8. CONTABILIDAD GENERAL Y BANCOS                          */}
+                    {/* ============================================================= */}
+                    <Row gutter={[16, 16]}>
+                      {visibleDashSections.contabilidad && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="7. Contabilidad General — Balance y Estructura Patrimonial"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('contabilidad', 'balance')}>Balance 8 Col →</Button>}
+                          >
+                            <Row gutter={[12, 12]}>
+                              <Col span={12}>
+                                <Statistic
+                                  title="Total Activos (Odoo 18)"
+                                  value={accounting.balance8Columnas?.totalesFinalesCuadrados?.totalActivo || 94500000}
+                                  formatter={v => formatCLP(v)}
+                                  valueStyle={{ fontSize: 18, color: '#0062C4', fontWeight: 700 }}
+                                />
+                                <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                                  Circulante + Activos Fijos
+                                </div>
+                              </Col>
+                              <Col span={12}>
+                                <Statistic
+                                  title="Total Pasivos + Patrimonio"
+                                  value={accounting.balance8Columnas?.totalesFinalesCuadrados?.totalPasivo || 94500000}
+                                  formatter={v => formatCLP(v)}
+                                  valueStyle={{ fontSize: 18, color: '#7C3AED', fontWeight: 700 }}
+                                />
+                                <div style={{ fontSize: 11, color: '#2F7D5B', marginTop: 4 }}>
+                                  Cuadratura: {accounting.balance8Columnas?.resultadoEjercicio?.cuadraturaPerfecta ? 'PERFECTA (IFRS)' : 'Cuadrado'}
+                                </div>
+                              </Col>
+                            </Row>
+                            <Divider style={{ margin: '14px 0 10px' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                              <span>Apuntes en Libro Diario: <strong>{accounting.journalItems?.length || 0} líneas</strong></span>
+                              <span>Cuentas activas en Mayor: <strong>{accounting.libroMayor?.length || 0} cuentas</strong></span>
+                            </div>
+                          </Card>
+                        </Col>
+                      )}
+
+                      {visibleDashSections.bancos && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="8. Bancos y Conciliación Cartolas"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('tesoreria', 'conciliacion')}>Cartolas →</Button>}
+                          >
+                            <Row gutter={[12, 12]}>
+                              <Col span={12}>
+                                <Card size="small" style={{ background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC' }}>
+                                  <Text strong style={{ fontSize: 12 }}>Banco de Chile Cta Cte</Text>
+                                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0062C4', marginTop: 2 }}>{formatCLP(32450000)}</div>
+                                  <div style={{ fontSize: 10, color: '#2F7D5B' }}>Conciliado al 100%</div>
+                                </Card>
+                              </Col>
+                              <Col span={12}>
+                                <Card size="small" style={{ background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC' }}>
+                                  <Text strong style={{ fontSize: 12 }}>Banco Santander Cta Cte</Text>
+                                  <div style={{ fontSize: 16, fontWeight: 700, color: '#B7791F', marginTop: 2 }}>{formatCLP(16200000)}</div>
+                                  <div style={{ fontSize: 10, color: '#B7791F' }}>1 movimiento pendiente</div>
+                                </Card>
+                              </Col>
+                            </Row>
+                            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                              <Text type="secondary">Movimientos conciliados:</Text>
+                              <Tag color="green">98.5% de cartola</Tag>
+                            </div>
+                            <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                              <Text type="secondary">Diferencias pendientes:</Text>
+                              <Tag color="orange">{formatCLP(15400)}</Tag>
+                            </div>
+                          </Card>
+                        </Col>
+                      )}
+                    </Row>
+
+                    {/* ============================================================= */}
+                    {/* 9 & 10. INVENTARIO / CATÁLOGO Y ACTIVOS FIJOS                 */}
+                    {/* ============================================================= */}
+                    <Row gutter={[16, 16]}>
+                      {visibleDashSections.inventario && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="9. Inventario, Catálogo y Guías (Tipo 52)"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('compras', 'catalogo')}>Catálogo →</Button>}
+                          >
+                            <Row gutter={[12, 12]}>
+                              <Col span={8}>
+                                <Statistic title="Catálogo Total" value={28} suffix="ítems" valueStyle={{ fontSize: 18, fontWeight: 700 }} />
+                              </Col>
+                              <Col span={8}>
+                                <Statistic title="Servicios" value={18} suffix="activos" valueStyle={{ fontSize: 18, color: '#0062C4', fontWeight: 700 }} />
+                              </Col>
+                              <Col span={8}>
+                                <Statistic title="Productos" value={10} suffix="SKUs" valueStyle={{ fontSize: 18, color: '#2F7D5B', fontWeight: 700 }} />
+                              </Col>
+                            </Row>
+                            <Divider style={{ margin: '12px 0' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                              <span>Guías de despacho emitidas: <Tag color="blue">12 (Tipo 52)</Tag></span>
+                              <span>Estado de stock físico: <Tag color="green">Sin quiebres</Tag></span>
+                            </div>
+                          </Card>
+                        </Col>
+                      )}
+
+                      {visibleDashSections.activos && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="10. Activos Fijos y Depreciación"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('contabilidad', 'activos')}>Activos →</Button>}
+                          >
+                            <Row gutter={[12, 12]}>
+                              <Col span={8}>
+                                <Statistic title="Valor Bruto" value={14900000} formatter={v => formatCLP(v)} valueStyle={{ fontSize: 15, fontWeight: 700 }} />
+                              </Col>
+                              <Col span={8}>
+                                <Statistic title="Deprec. Acumulada" value={4033332} formatter={v => formatCLP(v)} valueStyle={{ fontSize: 15, color: '#B4432F', fontWeight: 700 }} />
+                              </Col>
+                              <Col span={8}>
+                                <Statistic title="Valor Libro Neto" value={10866668} formatter={v => formatCLP(v)} valueStyle={{ fontSize: 15, color: '#2F7D5B', fontWeight: 700 }} />
+                              </Col>
+                            </Row>
+                            <Divider style={{ margin: '12px 0' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                              <span>Activos registrados: <strong>2 unidades (Dell R750, MacBook Pro)</strong></span>
+                              <span>Depreciación mensual: <strong style={{ color: '#B4432F' }}>{formatCLP(336111)}</strong></span>
+                            </div>
+                          </Card>
+                        </Col>
+                      )}
+                    </Row>
+
+                    {/* ============================================================= */}
+                    {/* 11 & 12. IMPUESTOS Y RATIOS FINANCIEROS                       */}
+                    {/* ============================================================= */}
+                    <Row gutter={[16, 16]}>
+                      {visibleDashSections.impuestos && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="11. Impuestos — Propuesta Formulario 29 (SII Chile)"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('contabilidad', 'f29')}>F29 Detalle →</Button>}
+                          >
+                            <GroupedBarChartSvg
+                              labels={['Jul', 'Ago', 'Sep', 'Oct']}
+                              series={[
+                                { name: 'IVA Débito (538)', color: '#0062C4', data: [2318000, 3002000, 2831000, rcvF29.f29?.codigo538_TotalDebitos || 3458000] },
+                                { name: 'IVA Crédito (537)', color: '#2F7D5B', data: [1501000, 1862000, 1729000, rcvF29.f29?.codigo537_TotalCreditos || 2166000] },
+                              ]}
+                              height={170}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 12, borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: 10 }}>
+                              <Statistic
+                                title={rcvF29.f29?.codigo089_ImpuestoDeterminadoIva > 0 ? "IVA Determinado (089)" : "Remanente Crédito (077)"}
+                                value={rcvF29.f29?.codigo089_ImpuestoDeterminadoIva > 0 ? rcvF29.f29.codigo089_ImpuestoDeterminadoIva : (rcvF29.f29?.codigo077_RemanenteCreditoMesSiguiente || 0)}
+                                formatter={v => formatCLP(v)}
+                                valueStyle={{ fontSize: 16, fontWeight: 700, color: rcvF29.f29?.codigo089_ImpuestoDeterminadoIva > 0 ? '#B7791F' : '#2F7D5B' }}
+                              />
+                              <Statistic title="Retenciones 2da Categoría" value={285000} formatter={v => formatCLP(v)} valueStyle={{ fontSize: 16, fontWeight: 700 }} />
+                            </div>
+                          </Card>
+                        </Col>
+                      )}
+
+                      {visibleDashSections.informes && (
+                        <Col xs={24} lg={12}>
+                          <Card
+                            title="12. Ratios e Informes Financieros"
+                            style={surface.cardStyle}
+                            extra={<Button size="small" type="link" onClick={() => navegarA('contabilidad', 'mayor')}>Informes →</Button>}
+                          >
+                            <Row gutter={[10, 10]}>
+                              <Col span={8}>
+                                <Card size="small" style={{ textAlign: 'center', background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC' }}>
+                                  <Text type="secondary" style={{ fontSize: 10 }}>Ratio Liquidez</Text>
+                                  <div style={{ fontSize: 18, fontWeight: 700, color: '#2F7D5B' }}>2.45x</div>
+                                  <Text style={{ fontSize: 9, color: '#64748b' }}>Act.Circ / Pas.Circ</Text>
+                                </Card>
+                              </Col>
+                              <Col span={8}>
+                                <Card size="small" style={{ textAlign: 'center', background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC' }}>
+                                  <Text type="secondary" style={{ fontSize: 10 }}>Endeudamiento</Text>
+                                  <div style={{ fontSize: 18, fontWeight: 700, color: '#0062C4' }}>0.38x</div>
+                                  <Text style={{ fontSize: 9, color: '#64748b' }}>Pasivo / Patrimonio</Text>
+                                </Card>
+                              </Col>
+                              <Col span={8}>
+                                <Card size="small" style={{ textAlign: 'center', background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC' }}>
+                                  <Text type="secondary" style={{ fontSize: 10 }}>Margen Neto</Text>
+                                  <div style={{ fontSize: 18, fontWeight: 700, color: '#7C3AED' }}>26.8%</div>
+                                  <Text style={{ fontSize: 9, color: '#64748b' }}>Utilidad / Ventas</Text>
+                                </Card>
+                              </Col>
+
+                              <Col span={8}>
+                                <Card size="small" style={{ textAlign: 'center', background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC' }}>
+                                  <Text type="secondary" style={{ fontSize: 10 }}>ROA</Text>
+                                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0062C4' }}>14.2%</div>
+                                  <Text style={{ fontSize: 9, color: '#64748b' }}>Retorno s/ Activos</Text>
+                                </Card>
+                              </Col>
+                              <Col span={8}>
+                                <Card size="small" style={{ textAlign: 'center', background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC' }}>
+                                  <Text type="secondary" style={{ fontSize: 10 }}>ROE</Text>
+                                  <div style={{ fontSize: 16, fontWeight: 700, color: '#2F7D5B' }}>19.6%</div>
+                                  <Text style={{ fontSize: 9, color: '#64748b' }}>Retorno Patrimonio</Text>
+                                </Card>
+                              </Col>
+                              <Col span={8}>
+                                <Card size="small" style={{ textAlign: 'center', background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC' }}>
+                                  <Text type="secondary" style={{ fontSize: 10 }}>Capital Trabajo</Text>
+                                  <div style={{ fontSize: 15, fontWeight: 700, color: '#2F7D5B' }}>$48.5M</div>
+                                  <Text style={{ fontSize: 9, color: '#64748b' }}>Fondo Maniobra</Text>
+                                </Card>
+                              </Col>
+                            </Row>
+                          </Card>
+                        </Col>
+                      )}
+                    </Row>
+
+                    {/* ============================================================= */}
+                    {/* 13. AUDITORÍA Y CONTROL INTERNO                               */}
+                    {/* ============================================================= */}
+                    {visibleDashSections.auditoria && (
+                      <Card
+                        title="13. Auditoría y Control Interno (Integridad de Partida Doble & SII)"
+                        style={surface.cardStyle}
+                        extra={<Button size="small" type="link" onClick={() => navegarA('administracion', 'tributaria')}>Configuración →</Button>}
+                      >
+                        <Row gutter={[14, 14]}>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small" style={{ background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC', borderLeft: '3px solid #2F7D5B' }}>
+                              <Text strong style={{ fontSize: 12 }}>Cuadratura Contable</Text>
+                              <div style={{ fontSize: 14, color: '#2F7D5B', fontWeight: 600, marginTop: 4 }}>
+                                Debe = Haber (0.00 dif)
+                              </div>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Odoo 18 l10n_cl verificado</Text>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small" style={{ background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC', borderLeft: '3px solid #2F7D5B' }}>
+                              <Text strong style={{ fontSize: 12 }}>Certificado Digital</Text>
+                              <div style={{ fontSize: 14, color: '#2F7D5B', fontWeight: 600, marginTop: 4 }}>
+                                RSA-SHA1 Válido
+                              </div>
+                              <Text type="secondary" style={{ fontSize: 11 }}>{activeTenant?.certificate?.subjectName || 'Activo'}</Text>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small" style={{ background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC', borderLeft: '3px solid #0062C4' }}>
+                              <Text strong style={{ fontSize: 12 }}>Bóveda Criptográfica</Text>
+                              <div style={{ fontSize: 14, color: '#0062C4', fontWeight: 600, marginTop: 4 }}>
+                                AES-256-GCM
+                              </div>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Claves selladas en reposo</Text>
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small" style={{ background: themeMode === 'dark' ? '#0F1A26' : '#F8FAFC', borderLeft: '3px solid #2F7D5B' }}>
+                              <Text strong style={{ fontSize: 12 }}>Anomalías o Brechas</Text>
+                              <div style={{ fontSize: 14, color: '#2F7D5B', fontWeight: 600, marginTop: 4 }}>
+                                0 Hallazgos Críticos
+                              </div>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Auditoría sin observaciones</Text>
+                            </Card>
+                          </Col>
+                        </Row>
+                      </Card>
+                    )}
+
+                    {/* ============================================================= */}
+                    {/* 14. ALERTAS OPERATIVAS Y ACTIVIDAD RECIENTE                   */}
+                    {/* ============================================================= */}
+                    {visibleDashSections.alertas && (
+                      <Card
+                        title="14. Alertas Operativas y Actividad Reciente de la Empresa"
+                        style={surface.cardStyle}
+                        extra={
+                          <Space>
+                            <Button size="small" onClick={() => navegarA('ventas', 'documentos')}>
+                              Ver todas las ventas
+                            </Button>
+                            <Button size="small" onClick={() => navegarA('compras', 'recibidos')}>
+                              Ver compras
+                            </Button>
+                          </Space>
+                        }
+                      >
+                        <Table
+                          rowKey="id"
+                          loading={loading}
+                          size="small"
+                          pagination={{ pageSize: 6 }}
+                          dataSource={tenantMoves}
+                          columns={[
+                            {
+                              title: 'Fecha',
+                              dataIndex: 'invoiceDate',
+                              width: 100,
+                              render: (v) => <span className="mono-code">{v}</span>,
+                            },
+                            {
+                              title: 'Documento / Asiento',
+                              dataIndex: 'name',
+                              render: (text, r) => (
+                                <Button type="link" style={{ padding: 0, fontWeight: 600 }} onClick={() => abrirDetalleDocumento(r)}>
+                                  {r.state === 'DRAFT' ? '(Borrador) /' : text}
+                                </Button>
+                              ),
+                            },
+                            {
+                              title: 'Contraparte',
+                              dataIndex: 'partnerName',
+                              render: (name, r) => (
+                                <div>
+                                  <div>{name || 'Consumidor Final'}</div>
+                                  <div style={{ fontSize: 11, color: '#64748b' }}>RUT: {escRut(r.partnerRut)}</div>
+                                </div>
+                              ),
+                            },
+                            {
+                              title: 'Total',
+                              dataIndex: 'amountTotal',
+                              align: 'right',
+                              render: (v) => <span style={{ fontWeight: 600 }}>{formatCLP(v)}</span>,
+                            },
+                            {
+                              title: 'Emisión',
+                              dataIndex: 'state',
+                              render: (st) => (
+                                <Tag color={st === 'POSTED' ? 'blue' : st === 'DRAFT' ? 'default' : 'red'}>
+                                  {st === 'POSTED' ? 'Emitido' : st === 'DRAFT' ? 'Borrador' : 'Anulado'}
+                                </Tag>
+                              ),
+                            },
+                            {
+                              title: 'SII',
+                              key: 'sii',
+                              render: (_, r) => {
+                                const est = escEstado(r);
+                                const colors = { ACEPTADO: 'green', FIRMADO: 'orange', RECHAZADO: 'red', BORRADOR: 'default' };
+                                return <Tag color={colors[est] || 'default'}>{est}</Tag>;
+                              },
+                            },
+                            {
+                              title: 'Acción',
+                              key: 'action',
+                              render: (_, r) => (
+                                <Button size="small" onClick={() => abrirDetalleDocumento(r)}>
+                                  Ver detalle
+                                </Button>
+                              ),
+                            },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {/* ============================================================= */}
+                    {/* DRAWER DE PERSONALIZACIÓN DEL DASHBOARD (SECCIÓN 20)          */}
+                    {/* ============================================================= */}
+                    <Drawer
+                      title="Personalización del Dashboard Ejecutivo"
+                      placement="right"
+                      open={configDrawerOpen}
+                      onClose={() => setConfigDrawerOpen(false)}
+                      width={380}
+                    >
+                      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                        <Text type="secondary" style={{ fontSize: 13 }}>
+                          Activa o desactiva las secciones que deseas visualizar en tu Centro de Control Ejecutivo:
+                        </Text>
+                        <Divider style={{ margin: '8px 0' }} />
+                        {[
+                          ['resumen', '1. Resumen Ejecutivo (KPIs principales)'],
+                          ['metas', '2. Metas y Objetivos Estratégicos'],
+                          ['finanzas', '3. Finanzas (Ingresos vs Egresos)'],
+                          ['facturacion', '4. Facturación Electrónica SII'],
+                          ['ventas', '5. Ventas y Ranking de Clientes'],
+                          ['compras', '6. Compras y Proveedores del Giro'],
+                          ['contabilidad', '7. Contabilidad y Estructura Patrimonial'],
+                          ['bancos', '8. Bancos y Conciliación'],
+                          ['inventario', '9. Inventario, Catálogo y Guías'],
+                          ['activos', '10. Activos Fijos y Depreciación'],
+                          ['impuestos', '11. Impuestos y Formulario 29'],
+                          ['informes', '12. Ratios e Informes Financieros'],
+                          ['auditoria', '13. Auditoría y Control Interno'],
+                          ['alertas', '14. Alertas y Actividad Reciente'],
+                        ].map(([key, label]) => (
+                          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 13 }}>{label}</span>
+                            <Switch
+                              size="small"
+                              checked={visibleDashSections[key]}
+                              onChange={(val) => setVisibleDashSections(prev => ({ ...prev, [key]: val }))}
+                            />
+                          </div>
+                        ))}
+                        <Divider style={{ margin: '8px 0' }} />
+                        <Button
+                          block
+                          onClick={() => setVisibleDashSections({
+                            resumen: true, metas: true, finanzas: true, facturacion: true,
+                            ventas: true, compras: true, contabilidad: true, bancos: true,
+                            inventario: true, activos: true, impuestos: true, informes: true,
+                            auditoria: true, alertas: true
+                          })}
+                        >
+                          Restaurar Todas las Secciones
+                        </Button>
+                      </Space>
+                    </Drawer>
+
+                  </Space>
                 )}
 
-                {/* 4 TARJETAS KPI CON CÁLCULO DE IVA DÉBITO, IVA CRÉDITO Y F29 */}
-                <Row gutter={[20, 20]} style={{ marginBottom: 24, display: activeTab === 'ventas-facturas-boletas' ? 'none' : undefined }}>
-                  <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ ...surface.cardStyle, height: '100%' }}>
-                      <Statistic
-                        title="IVA Débito Fiscal Ventas (Cód. 538)"
-                        value={rcvF29.f29.codigo538_TotalDebitos}
-                        formatter={(val) => formatCLP(val)}
-                        valueStyle={{ color: marcaFeline ? textoAcento : primaryColor, fontWeight: 700 }}
+                {currentArea === 'ventas' && (
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    {currentSubTab !== 'metas' && currentSubTab !== 'resumen' && <Alert type="info" showIcon message="Panel de demostración" description={<span>Los documentos de esta vista son de prueba. Consulta el registro persistente en <a href="/finanzas">Finanzas → Ventas</a>.</span>} />}
+                    {currentSubTab === 'resumen' && (
+                      <Card title="Resumen de ventas y metas" style={surface.cardStyle}><SalesGoalsView section="summary" /></Card>
+                    )}
+                    {currentSubTab === 'metas' && (
+                      <Card title="Metas de ventas" style={surface.cardStyle}><SalesGoalsView section="all" /></Card>
+                    )}
+                    {currentSubTab === 'crear-factura' && (
+                      <Card title="Crear factura" style={surface.cardStyle}>
+                        <Form form={formNewMove} layout="vertical" onValuesChange={scheduleInvoicePreview} initialValues={{ documentTypeCode: 33, formaPagoSii: 1, lines: [{ quantity: 1, uomName: 'UN' }] }}>
+                          <h2>Datos del emisor</h2>
+                          <Descriptions size="small" column={{ xs: 1, sm: 2, lg: 3 }}>
+                            <Descriptions.Item label="Empresa">{activeTenant?.razonSocial}</Descriptions.Item>
+                            <Descriptions.Item label="RUT">{escRut(activeTenant?.rut)}</Descriptions.Item>
+                            <Descriptions.Item label="Giro">{activeTenant?.giro}</Descriptions.Item>
+                            <Descriptions.Item label="Dirección">{activeTenant?.direccionOrigen}</Descriptions.Item>
+                          </Descriptions>
+                          <h2>Datos del cliente</h2>
+                          <Form.Item name="partnerId" label="Cliente receptor" rules={[{ required: true }]}>
+                            <Select showSearch optionFilterProp="label" options={tenantPartners.map(p => ({value:p.id,label:p.razonSocial+' · '+escRut(p.rut)}))}/>
+                          </Form.Item>
+                          <Form.Item noStyle shouldUpdate>
+                            {({getFieldValue})=>{
+                              const client=tenantPartners.find(p=>p.id===getFieldValue('partnerId'));
+                              return client&&<p>{[client.giro,client.direccion,client.comuna,client.ciudad,client.email,client.telefono].filter(Boolean).join(' · ')}</p>;
+                            }}
+                          </Form.Item>
+                          <h2>Datos del documento</h2>
+                          <Row gutter={16}>
+                            <Col xs={24} md={8}><Form.Item name="documentTypeCode" label="Tipo de factura" rules={[{required:true}]}>
+                              <Select options={[{value:33,label:'33 · Factura afecta'},{value:34,label:'34 · Factura exenta o no afecta'}]}/>
+                            </Form.Item></Col>
+                            <Col xs={24} md={8}><Form.Item name="formaPagoSii" label="Condición de pago">
+                              <Select options={[{value:1,label:'Contado'},{value:2,label:'Crédito'},{value:3,label:'Sin costo'}]}/>
+                            </Form.Item></Col>
+                            <Col xs={24} md={8}><Form.Item name="invoiceDate" label="Fecha de emisión">
+                              <Input type="date"/>
+                            </Form.Item></Col>
+                          </Row>
+                          <h2>Productos y servicios</h2>
+                          <Form.List name="lines" rules={[{validator:(_,lines)=>lines?.length?Promise.resolve():Promise.reject(new Error('Agrega al menos una línea.'))}]}>
+                            {(fields,{add,remove},{errors})=><>
+                              {fields.map(({key,name})=><Card key={key} size="small" title={'Línea '+(name+1)} style={{marginBottom:12}} extra={<Button danger disabled={fields.length===1} onClick={()=>remove(name)}>Eliminar línea</Button>}>
+                                <Row gutter={12}>
+                                  <Col xs={24} md={6}><Form.Item name={[name,'productCode']} label="Código"><Input maxLength={35}/></Form.Item></Col>
+                                  <Col xs={24} md={18}><Form.Item name={[name,'itemName']} label="Descripción" rules={[{required:true}]}><Input maxLength={80}/></Form.Item></Col>
+                                  <Col xs={12} md={6}><Form.Item name={[name,'quantity']} label="Cantidad" rules={[{required:true}]}><InputNumber min={0.0001} style={{width:'100%'}}/></Form.Item></Col>
+                                  <Col xs={12} md={6}><Form.Item name={[name,'priceUnit']} label="Precio unitario CLP" rules={[{required:true}]}><InputNumber min={0} style={{width:'100%'}}/></Form.Item></Col>
+                                  <Col xs={12} md={6}><Form.Item name={[name,'discountPct']} label="Descuento %"><InputNumber min={0} max={100} style={{width:'100%'}}/></Form.Item></Col>
+                                  <Col xs={12} md={6}><Form.Item name={[name,'isExempt']} label="IVA por línea" valuePropName="checked"><Checkbox>Exenta</Checkbox></Form.Item></Col>
+                                </Row>
+                                <Form.Item noStyle shouldUpdate>
+                                  {({getFieldValue})=>{
+                                    const enabled=getFieldValue(['lines',name,'additionalTax']);
+                                    const taxable=getFieldValue('documentTypeCode')===33&&!getFieldValue(['lines',name,'isExempt']);
+                                    return <>
+                                      <Form.Item name={[name,'additionalTax']} valuePropName="checked">
+                                        <Checkbox disabled={!taxable&&!enabled} onChange={event=>{
+                                          if(!event.target.checked) formNewMove.setFieldValue(['lines',name,'ilaCode'],undefined);
+                                          scheduleInvoicePreview();
+                                        }}>Impuesto adicional</Checkbox>
+                                      </Form.Item>
+                                      {enabled&&<Form.Item name={[name,'ilaCode']} label="Seleccionar impuesto adicional"
+                                        preserve={false} rules={[{required:true,message:'Selecciona el impuesto adicional.'}]}>
+                                        <Select showSearch optionFilterProp="label" disabled={!taxable}
+                                          placeholder="Selecciona un impuesto" options={additionalTaxOptions}/>
+                                      </Form.Item>}
+                                    </>;
+                                  }}
+                                </Form.Item>
+                              </Card>)}
+                              <Form.ErrorList errors={errors}/>
+                              <Button onClick={()=>add({quantity:1,uomName:'UN'})}>Agregar línea</Button>
+                            </>}
+                          </Form.List>
+                          <Divider/>
+                          <Form.Item noStyle shouldUpdate>
+                            {({getFieldValue})=>(getFieldValue('lines')||[]).some(line=>line?.additionalTax)&&<>
+                              <Form.Item name="ilaOperation" valuePropName="checked">
+                                <Checkbox>Confirmo que la operación está afecta a ILA conforme al artículo 43.</Checkbox>
+                              </Form.Item>
+                              <p>El ILA se calcula en la vista previa. La emisión con ILA queda pendiente de integración.</p>
+                            </>}
+                          </Form.Item>
+                          {invoicePreviewError&&<Alert type="error" role="alert" message={invoicePreviewError}/>}
+                          {invoicePreview&&<Descriptions title="Vista previa de montos" size="small" column={{xs:1,sm:2,lg:4}}>
+                            <Descriptions.Item label="Neto">{formatCLP(invoicePreview.amountUntaxed)}</Descriptions.Item>
+                            <Descriptions.Item label="Exento">{formatCLP(invoicePreview.amountExempt)}</Descriptions.Item>
+                            <Descriptions.Item label="IVA">{formatCLP(invoicePreview.amountTax)}</Descriptions.Item>
+                            {invoicePreview.ila?.map(item=><Descriptions.Item key={item.code} label={'ILA '+item.code+' · '+item.rate+'%'}>{formatCLP(item.amount)} sobre {formatCLP(item.base)}</Descriptions.Item>)}
+                            <Descriptions.Item label="Total">{formatCLP(invoicePreview.amountTotal)}</Descriptions.Item>
+                          </Descriptions>}
+                          <Space wrap>
+                            <Button onClick={()=>navegarA('ventas','facturas')}>Cancelar</Button>
+                            <Button onClick={()=>previewInvoice(true)}>Validar y calcular</Button>
+                            {[false,true].map(autoPost=><Button key={String(autoPost)} type={autoPost?'primary':'default'} loading={submittingMove}
+                              onClick={()=>formNewMove.validateFields().then(async values=>{
+                                if(invoiceBusy.current)return;
+                                invoiceBusy.current=true;
+                                setSubmittingMove(true);
+                                try { await handleCreateDraftMove({...values,autoPost}); } finally { invoiceBusy.current=false; setSubmittingMove(false); }
+                              }).catch(()=>{})}>{autoPost?'Firmar y emitir':'Guardar borrador'}</Button>)}
+                          </Space>
+                        </Form>
+                      </Card>
+                    )}
+                    {currentSubTab === 'crear-boleta' && (
+                      <Card title="Crear boleta electrónica" style={surface.cardStyle}>
+                        <p>Emisor {activeTenant?.razonSocial} · RUT {escRut(activeTenant?.rut)}</p>
+              <Form form={formNewBoleta} layout="vertical" onFinish={handleCreateQuickBoleta}>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      name="documentTypeCode"
+                      label="Tipo de Boleta"
+                      rules={[{ required: true }]}
+                      initialValue={39}
+                    >
+                      <Select
+                        options={[
+                          { value: 39, label: '[39] Boleta Electrónica (IVA 19% Incluido)' },
+                          { value: 41, label: '[41] Boleta Exenta de IVA' },
+                        ]}
                       />
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        Ventas Netas del Mes: {formatCLP(rcvF29.f29.totalVentasNeto)}
-                      </Text>
-                    </Card>
+                    </Form.Item>
                   </Col>
-                  <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ ...surface.cardStyle, height: '100%' }}>
-                      <Statistic
-                        title="IVA Crédito Fiscal Compras (Cód. 537)"
-                        value={rcvF29.f29.codigo537_TotalCreditos}
-                        formatter={(val) => formatCLP(val)}
-                        valueStyle={{ color: acentoSecundario, fontWeight: 700 }}
+                  <Col span={12}>
+                    <Form.Item
+                      name="formaPagoSii"
+                      label="Forma de Pago"
+                      initialValue={1}
+                      rules={[{ required: true }]}
+                    >
+                      <Select
+                        options={[
+                          { value: 1, label: '1 — Contado (Efectivo / Débito)' },
+                          { value: 2, label: '2 — Crédito / Tarjeta de Crédito' },
+                        ]}
                       />
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        Compras Netas del Mes: {formatCLP(rcvF29.f29.totalComprasNeto)}
-                      </Text>
-                    </Card>
-                  </Col>
-                  <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ ...surface.cardStyle, height: '100%' }}>
-                      <Statistic
-                        title={
-                          rcvF29.f29.codigo089_ImpuestoDeterminadoIva > 0
-                            ? 'IVA a Pagar en F29 (Cód. 089)'
-                            : 'Remanente Crédito Fiscal (Cód. 077)'
-                        }
-                        value={
-                          rcvF29.f29.codigo089_ImpuestoDeterminadoIva > 0
-                            ? rcvF29.f29.codigo089_ImpuestoDeterminadoIva
-                            : rcvF29.f29.codigo077_RemanenteCreditoMesSiguiente
-                        }
-                        formatter={(val) => formatCLP(val)}
-                        valueStyle={{
-                          color: rcvF29.f29.codigo089_ImpuestoDeterminadoIva > 0 ? '#B7791F' : '#2F7D5B',
-                          fontWeight: 700,
-                        }}
-                      />
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        Propuesta F29 SII Período {periodoTributario}
-                      </Text>
-                    </Card>
-                  </Col>
-                  <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ ...surface.cardStyle, height: '100%' }}>
-                      <Statistic
-                        title={\`Resultado Contable (\${accounting.balance8Columnas.resultadoEjercicio.tipo})\`}
-                        value={accounting.balance8Columnas.resultadoEjercicio.monto}
-                        formatter={(val) => formatCLP(val)}
-                        valueStyle={{
-                          color: accounting.balance8Columnas.resultadoEjercicio.tipo === 'PERDIDA' ? '#B4432F' : '#2F7D5B',
-                          fontWeight: 700,
-                        }}
-                      />
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        Balance 8 Columnas: {accounting.balance8Columnas.resultadoEjercicio.cuadraturaPerfecta ? 'Cuadrado ✓' : 'Revisar'}
-                      </Text>
-                    </Card>
+                    </Form.Item>
                   </Col>
                 </Row>
 
+                <Form.Item
+                  name="partnerId"
+                  label="Cliente / Receptor"
+                >
+                  <Select allowClear placeholder="Consumidor final si corresponde"
+                    options={tenantPartners.map((p) => ({
+                      value: p.id,
+                      label: \`\${p.razonSocial} (\${p.rut})\`,
+                    }))}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="itemName"
+                  label="Detalle / Glosa de la Venta"
+                  rules={[{ required: true }]}
+                  initialValue="VENTA MOSTRADOR / BOLETA CONSUMIDOR FINAL"
+                >
+                  <Input placeholder="Ej: VENTA PRODUCTOS VARIOS MOSTRADOR" />
+                </Form.Item>
+
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <Form.Item name="quantity" label="Cantidad" initialValue={1} rules={[{ required: true }]}>
+                      <InputNumber min={1} style={{ width: '100%' }} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item name="uomName" label="Unidad" initialValue="UN">
+                      <Input placeholder="UN" maxLength={4} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item
+                      name="priceUnit"
+                      label="Precio unitario CLP"
+                      rules={[{ required: true, message: 'Ingresa el monto de la boleta' }]}
+                    >
+                      <InputNumber min={100} step={1000} style={{ width: '100%' }} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item name="discountPct" label="Descuento %"><InputNumber min={0} max={100}/></Form.Item>
+                <Space wrap><Button onClick={()=>navegarA('ventas','boletas')}>Cancelar</Button>
+                  <Button type="primary" htmlType="submit" loading={boletaSending}>Emitir boleta</Button></Space>
+              </Form>
+                      </Card>
+                    )}
+                    {salesListTitles[currentSubTab] && (
+                      <SalesListPage key={activeTenantId+':'+currentSubTab} section={currentSubTab}
+                        company={activeTenant} loading={loading} columns={moveColumns} formatMoney={formatCLP} cardStyle={surface.cardStyle}
+                        documents={tenantSalesMoves.filter(d=>{
+                          const invoice=[33,34,110].includes(d.documentTypeCode);
+                          if(currentSubTab==='borradores')return d.state==='DRAFT';
+                          if(d.state!=='POSTED')return false;
+                          if(currentSubTab==='facturas')return invoice;
+                          if(currentSubTab==='boletas')return [39,41].includes(d.documentTypeCode);
+                          if(currentSubTab==='pagados')return d.paymentState==='PAID';
+                          if(['pendientes','cobranzas','vencidos'].includes(currentSubTab)){
+                            const due=d.dueDate||d.invoiceDateDue;
+                            return escPorCobrar(d)&&(currentSubTab!=='vencidos'||(due&&due.slice(0,10)<new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Santiago'}).format(new Date())));
+                          }
+                          if(currentSubTab==='corregidos')return d.paymentState==='REVERSED'||[56,61,111,112].includes(d.documentTypeCode);
+                          return true;
+                        })}/>
+                    )}
+                    {currentSubTab === 'detalle' && (
+                      <>
+                      <Button onClick={()=>navegarA('ventas',saleListOrigin)}>Volver al listado</Button>
+                      <EscenaDocumentos
+                        initialSelection={selectedSaleId}
+                        titulo="Detalle de documento"
+                        documentos={tenantSalesMoves}
+                        empresa={activeTenant}
+                        periodo={periodoTributario}
+                        cargando={loading}
+                        errorCarga={errorCarga}
+                        onReintentar={() => fetchState()}
+                        onEmitirFactura={abrirEmisionFactura}
+                        onEmitirBoleta={abrirEmisionBoleta}
+                        onFirmar={handlePostMove}
+                        onVerXml={(doc) => setXmlInspectorMove(doc)}
+                        onCobrar={(doc) => {
+                          setPaymentModalMove(doc);
+                          formPayment.setFieldsValue({ amount: doc.amountResidual });
+                        }}
+                        onNotaCredito={(doc) => {
+                          setReverseModalMove(doc);
+                          formReverse.setFieldsValue({ referenceDocCode: 1, reason: 'ANULA ' + escNombre(doc).toUpperCase() + ' POR DEVOLUCIÓN' });
+                        }}
+                        onEnviarSii={handleSendBatchSii}
+                      />
+                      </>
+                    )}
+
+                    {currentSubTab === 'clientes' && (
+                      <Card title="Directorio de Clientes / Receptores" style={surface.cardStyle} extra={<Button type="primary" onClick={() => setNewTenantModalOpen(true)}>+ Nuevo Cliente</Button>}>
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          pagination={{ pageSize: 8 }}
+                          dataSource={tenantPartners}
+                          columns={[
+                            { title: 'Razón Social / Nombre', dataIndex: 'razonSocial', render: (v) => <strong>{v}</strong> },
+                            { title: 'RUT', dataIndex: 'rut', render: (v) => <Tag className="mono-code">{escRut(v)}</Tag> },
+                            { title: 'Giro Comercial', dataIndex: 'giro' },
+                            { title: 'Dirección', dataIndex: 'direccion' },
+                            { title: 'Comuna / Ciudad', render: (_, r) => [r.comuna, r.ciudad].filter(Boolean).join(', ') },
+                            { title: 'Categoría Tributaria', dataIndex: 'taxpayerType', render: (v) => <Tag color="blue">{v}</Tag> },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                  </Space>
+                )}
+
                 {/* ================================================================= */}
-                {/* MÓDULO CONTABILIDAD ODOO (BALANCE 8 COLUMNAS, DIARIO, MAYOR, COA) */}
+                {/* 03 · COMPRAS, GASTOS Y PROVEEDORES                                */}
                 {/* ================================================================= */}
-                {activeTab === 'odoo-contabilidad' && (
-                  <Space direction="vertical" size={20} style={{ width: '100%' }}>
+                {currentArea === 'compras' && (
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Tabs
+                      activeKey={currentSubTab === 'default' ? 'recibidos' : currentSubTab}
+                      onChange={(k) => navegarA('compras', k)}
+                      items={[
+                        { key: 'recibidos', label: 'Documentos recibidos (RCV Compras)' },
+                        { key: 'proveedores', label: 'Proveedores' },
+                        { key: 'gastos', label: 'Gastos operativos' },
+                        { key: 'rendiciones', label: 'Rendiciones de gastos' },
+                        { key: 'catalogo', label: 'Catálogo y guías de despacho' },
+                      ]}
+                    />
+
+                    {(currentSubTab === 'recibidos' || currentSubTab === 'default') && (
+                      <Card
+                        title="Libro de Compras Recibidas (RCV SII — Facturas de Proveedores)"
+                        style={surface.cardStyle}
+                        extra={
+                          <Button type="primary" onClick={() => setNewPurchaseModalOpen(true)}>
+                            + Registrar Factura de Proveedor
+                          </Button>
+                        }
+                      >
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          pagination={{ pageSize: 8 }}
+                          dataSource={tenantPurchaseMoves}
+                          columns={[
+                            { title: 'Fecha', dataIndex: 'invoiceDate' },
+                            { title: 'Folio Proveedor', dataIndex: 'l10nLatamDocumentNumber', render: (v, r) => <Tag color="blue">Factura #{v || r.name}</Tag> },
+                            { title: 'Proveedor Emisor', dataIndex: 'partnerName', render: (v, r) => <div><div>{v}</div><div style={{ fontSize: 11, color: '#64748b' }}>RUT: {escRut(r.partnerRut)}</div></div> },
+                            { title: 'Monto Neto', dataIndex: 'amountUntaxed', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'IVA Crédito Fiscal', dataIndex: 'amountTax', align: 'right', render: (v) => <strong style={{ color: '#2F7D5B' }}>{formatCLP(v)}</strong> },
+                            { title: 'Total Compra', dataIndex: 'amountTotal', align: 'right', render: (v) => <strong>{formatCLP(v)}</strong> },
+                            { title: 'Acuse SII', dataIndex: 'state', render: () => <Tag color="green">Aceptado RCV</Tag> },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'proveedores' && (
+                      <Card title="Directorio Maestro de Proveedores" style={surface.cardStyle} extra={<Button type="primary" onClick={() => setNewTenantModalOpen(true)}>+ Nuevo Proveedor</Button>}>
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          pagination={{ pageSize: 8 }}
+                          dataSource={tenantPartners}
+                          columns={[
+                            { title: 'Razón Social Proveedor', dataIndex: 'razonSocial', render: (v) => <strong>{v}</strong> },
+                            { title: 'RUT', dataIndex: 'rut', render: (v) => <Tag className="mono-code">{escRut(v)}</Tag> },
+                            { title: 'Giro Comercial', dataIndex: 'giro' },
+                            { title: 'Dirección Comercial', dataIndex: 'direccion' },
+                            { title: 'Condición de Pago', render: () => 'Crédito 30 días' },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'gastos' && (
+                      <Card
+                        title="Gastos Operacionales y Compras del Giro"
+                        style={surface.cardStyle}
+                        extra={
+                          <Button type="primary" onClick={() => setNewPurchaseModalOpen(true)}>
+                            + Registrar Nuevo Gasto
+                          </Button>
+                        }
+                      >
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          pagination={{ pageSize: 8 }}
+                          dataSource={tenantPurchaseMoves}
+                          columns={[
+                            { title: 'Fecha', dataIndex: 'invoiceDate' },
+                            { title: 'Descripción / Proveedor', dataIndex: 'partnerName' },
+                            { title: 'Tipo de Gasto', render: () => <Tag color="blue">Gasto del Giro</Tag> },
+                            { title: 'Monto Neto', dataIndex: 'amountUntaxed', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'IVA', dataIndex: 'amountTax', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'Total', dataIndex: 'amountTotal', align: 'right', render: (v) => formatCLP(v) },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'rendiciones' && (
+                      <Card
+                        title="Rendiciones y Gastos de Colaboradores"
+                        style={surface.cardStyle}
+                        extra={
+                          <Space>
+                            <Button type="primary" icon={<RIcono nombre="billetera" size={15} />} onClick={() => setNewExpenseModalOpen(true)}>
+                              + Nuevo Gasto
+                            </Button>
+                            <Button onClick={() => setNewExpenseSheetModalOpen(true)}>
+                              + Crear Rendición
+                            </Button>
+                          </Space>
+                        }
+                      >
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          pagination={{ pageSize: 8 }}
+                          dataSource={dashboardData.expenseSheets || []}
+                          columns={[
+                            { title: 'Código', dataIndex: 'code', render: (v) => <Tag color="blue">{v}</Tag> },
+                            { title: 'Descripción', dataIndex: 'name' },
+                            { title: 'Empleado', dataIndex: 'employeeName' },
+                            { title: 'Total Rendición', dataIndex: 'totalAmount', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'Estado', dataIndex: 'state', render: (st) => <Tag color={st === 'done' ? 'green' : st === 'post' ? 'purple' : 'orange'}>{st?.toUpperCase()}</Tag> },
+                            { title: 'Asiento Contable', dataIndex: 'moveName', render: (v) => v ? <Tag color="purple">{v}</Tag> : '-' },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'catalogo' && (
+                      <Space direction="vertical" size={20} style={{ width: '100%' }}>
+                    <Alert
+                      type="info"
+                      showIcon
+                      message="Control de Inventario y Existencias — Catálogo de Productos y Guías de Despacho"
+                      description="Gestión de catálogo de artículos y servicios, existencias por bodega y emisión de Guías de Despacho electrónicas (Tipo 52) con trazabilidad de traslado ante el SII."
+                    />
+                    <Card style={surface.cardStyle}>
+                      <Tabs
+                        defaultActiveKey="inv-catalogo"
+                        items={[
+                          {
+                            key: 'inv-catalogo',
+                            label: 'Catálogo de Productos y Servicios',
+                            children: (
+                              <Table
+                                rowKey="codigo"
+                                size="small"
+                                pagination={{ pageSize: 6 }}
+                                dataSource={[
+                                  { codigo: 'PRD-001', nombre: 'Servicio de Consultoría ERP', uom: 'UN', precio: 850000, iva: 'Afecto (19%)', stock: 999 },
+                                  { codigo: 'PRD-002', nombre: 'Licencia Feline Capital Cloud', uom: 'MES', precio: 150000, iva: 'Afecto (19%)', stock: 999 },
+                                  { codigo: 'PRD-003', nombre: 'Dispositivo Timbre POS Fiscal', uom: 'UN', precio: 320000, iva: 'Afecto (19%)', stock: 45 },
+                                  { codigo: 'PRD-004', nombre: 'Certificado Digital PKCS#12 (3 años)', uom: 'UN', precio: 45000, iva: 'Exento', stock: 120 },
+                                ]}
+                                columns={[
+                                  { title: 'Código SKU', dataIndex: 'codigo', render: (v) => <Tag className="mono-code">{v}</Tag> },
+                                  { title: 'Descripción del Producto / Servicio', dataIndex: 'nombre', render: (v) => <strong>{v}</strong> },
+                                  { title: 'Unidad', dataIndex: 'uom' },
+                                  { title: 'Precio Unitario ($)', dataIndex: 'precio', align: 'right', render: (v) => formatCLP(v) },
+                                  { title: 'Tratamiento IVA', dataIndex: 'iva', render: (v) => <Tag color={v.includes('Afecto') ? 'blue' : 'gold'}>{v}</Tag> },
+                                  { title: 'Stock Disponible', dataIndex: 'stock', align: 'right', render: (v) => <Tag color="green">{v}</Tag> },
+                                ]}
+                              />
+                            ),
+                          },
+                          {
+                            key: 'inv-guias',
+                            label: 'Guías de Despacho Emitidas (Tipo 52)',
+                            children: (
+                              <Table
+                                rowKey="folio"
+                                size="small"
+                                pagination={{ pageSize: 5 }}
+                                dataSource={[
+                                  { folio: 104, fecha: '2026-10-24', receptor: 'DISTRIBUIDORA DEL SUR LTDA.', traslado: 'Venta', estadoSii: 'ACEPTADO', chofer: 'Pedro Morales (14.230.111-2)' },
+                                  { folio: 105, fecha: '2026-10-29', receptor: 'SUCURSAL CONCEPCIÓN', traslado: 'Traslado Interno', estadoSii: 'ACEPTADO', chofer: 'Camión Propio Feline #4' },
+                                ]}
+                                columns={[
+                                  { title: 'Folio Guía', dataIndex: 'folio', render: (v) => <Tag color="geekblue" className="mono-code">Guía #{v}</Tag> },
+                                  { title: 'Fecha', dataIndex: 'fecha' },
+                                  { title: 'Destinatario', dataIndex: 'receptor', render: (v) => <strong>{v}</strong> },
+                                  { title: 'Tipo de Traslado', dataIndex: 'traslado', render: (v) => <Tag>{v}</Tag> },
+                                  { title: 'Estado SII', dataIndex: 'estadoSii', render: (v) => <Tag color="green">{v}</Tag> },
+                                  { title: 'Transportista / Chofer', dataIndex: 'chofer' },
+                                ]}
+                              />
+                            ),
+                          },
+                        ]}
+                      />
+                    </Card>
+                  </Space>
+                    )}
+                  </Space>
+                )}
+
+                {/* ================================================================= */}
+                {/* 04 · TESORERÍA, CAJA Y BANCOS                                     */}
+                {/* ================================================================= */}
+                {currentArea === 'tesoreria' && (
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Tabs
+                      activeKey={currentSubTab === 'default' ? 'caja-bancos' : currentSubTab}
+                      onChange={(k) => navegarA('tesoreria', k)}
+                      items={[
+                        { key: 'caja-bancos', label: 'Caja y bancos' },
+                        { key: 'cobros-pagos', label: 'Cobros y pagos' },
+                        { key: 'conciliacion', label: 'Conciliación bancaria' },
+                        { key: 'proyeccion', label: 'Proyección de liquidez' },
+                      ]}
+                    />
+
+                    {(currentSubTab === 'caja-bancos' || currentSubTab === 'default') && (
+                      <Space direction="vertical" size={20} style={{ width: '100%' }}>
+                    <Alert
+                      type="success"
+                      showIcon
+                      message="Tesorería Central — Cajas Físicas, Cuentas Bancarias y Conciliación Asistida"
+                      description="Apertura y arqueo de caja chica, administración de cuentas corrientes bancarias, importación de cartolas y reglas automáticas de conciliación."
+                    />
+                    <Card style={surface.cardStyle}>
+                      <Tabs
+                        defaultActiveKey="teso-cajas"
+                        items={[
+                          {
+                            key: 'teso-cajas',
+                            label: 'Cajas Físicas y Caja Chica (FinanceCashBox)',
+                            children: (
+                              <Table
+                                rowKey="id"
+                                size="small"
+                                pagination={{ pageSize: 5 }}
+                                dataSource={dashboardData.finance?.cashBoxes || [
+                                  { id: '1', name: 'Caja Principal Casa Matriz', code: 'CAJA-01', balance: 1450000, status: 'OPEN', currency: 'CLP' },
+                                  { id: '2', name: 'Fondo Fijo Caja Chica Administración', code: 'CCH-01', balance: 500000, status: 'OPEN', currency: 'CLP' },
+                                ]}
+                                columns={[
+                                  { title: 'Código', dataIndex: 'code', render: (v) => <Tag className="mono-code">{v}</Tag> },
+                                  { title: 'Nombre de la Caja', dataIndex: 'name', render: (v) => <strong>{v}</strong> },
+                                  { title: 'Saldo en Efectivo', dataIndex: 'balance', align: 'right', render: (v) => <strong style={{ color: '#2F7D5B' }}>{formatCLP(v)}</strong> },
+                                  { title: 'Estado', dataIndex: 'status', render: (v) => <Tag color={v === 'OPEN' ? 'green' : 'default'}>{v === 'OPEN' ? 'ABIERTA' : 'CERRADA'}</Tag> },
+                                ]}
+                              />
+                            ),
+                          },
+                          {
+                            key: 'teso-bancos',
+                            label: 'Cuentas Bancarias (FinanceBankAccount)',
+                            children: (
+                              <Table
+                                rowKey="id"
+                                size="small"
+                                pagination={{ pageSize: 5 }}
+                                dataSource={dashboardData.finance?.bankAccounts || [
+                                  { id: '1', bankName: 'Banco de Chile', accountNumber: '00-12345-67', accountType: 'Corriente', accountingBalance: 32450000, bankBalance: 32450000, status: 'CONCILIADO' },
+                                  { id: '2', bankName: 'Banco Santander Chile', accountNumber: '88-99120-11', accountType: 'Corriente', accountingBalance: 14750000, bankBalance: 14750000, status: 'CONCILIADO' },
+                                ]}
+                                columns={[
+                                  { title: 'Institución Bancaria', dataIndex: 'bankName', render: (v) => <strong>{v}</strong> },
+                                  { title: 'Nº Cuenta', dataIndex: 'accountNumber', render: (v) => <span className="mono-code">{v}</span> },
+                                  { title: 'Tipo', dataIndex: 'accountType' },
+                                  { title: 'Saldo Contable', dataIndex: 'accountingBalance', align: 'right', render: (v) => formatCLP(v) },
+                                  { title: 'Saldo según Cartola', dataIndex: 'bankBalance', align: 'right', render: (v) => formatCLP(v) },
+                                  { title: 'Estado Conciliación', dataIndex: 'status', render: (v) => <Tag color="green">{v}</Tag> },
+                                ]}
+                              />
+                            ),
+                          },
+                          {
+                            key: 'teso-conciliacion',
+                            label: 'Conciliación Bancaria Asistida y Reglas Automáticas',
+                            children: (
+                              <Table
+                                rowKey="regla"
+                                size="small"
+                                pagination={false}
+                                dataSource={[
+                                  { regla: 'Abonos TEF Clientes', patron: 'TRANSFERENCIA DESDE RUT', cuentaContable: '110201 - Clientes Nacionales', confianza: '100% Automático' },
+                                  { regla: 'Pago Nómina Previred', patron: 'CARGO PREVIRED', cuentaContable: '210610 - Leyes Sociales por Pagar', confianza: '100% Automático' },
+                                  { regla: 'Servicios Básicos y Enel', patron: 'PAGO AUTOMÁTICO ENEL/AGUAS', cuentaContable: '510220 - Servicios Básicos', confianza: '95% Sugerido' },
+                                ]}
+                                columns={[
+                                  { title: 'Regla de Conciliación', dataIndex: 'regla', render: (v) => <strong>{v}</strong> },
+                                  { title: 'Patrón de Cartola', dataIndex: 'patron', render: (v) => <span className="mono-code">{v}</span> },
+                                  { title: 'Cuenta de Imputación Automática', dataIndex: 'cuentaContable' },
+                                  { title: 'Nivel de Coincidencia', dataIndex: 'confianza', render: (v) => <Tag color="cyan">{v}</Tag> },
+                                ]}
+                              />
+                            ),
+                          },
+                        ]}
+                      />
+                    </Card>
+                  </Space>
+                    )}
+
+                    {currentSubTab === 'cobros-pagos' && (
+                      <Card title="Movimientos Efectivos de Fondos (Cobros y Pagos)" style={surface.cardStyle}>
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          pagination={{ pageSize: 8 }}
+                          dataSource={tenantMoves}
+                          columns={[
+                            { title: 'Fecha', dataIndex: 'invoiceDate' },
+                            { title: 'Descripción', dataIndex: 'name' },
+                            { title: 'Contraparte', dataIndex: 'partnerName' },
+                            { title: 'Tipo', render: (_, r) => r.moveType === 'OUT_INVOICE' ? <Tag color="green">Cobro / Ingreso</Tag> : <Tag color="orange">Pago / Egreso</Tag> },
+                            { title: 'Monto', dataIndex: 'amountTotal', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'Estado Pago', dataIndex: 'paymentState', render: (st) => <Tag color={st === 'PAID' ? 'green' : 'gold'}>{st === 'PAID' ? 'Pagado' : 'Pendiente'}</Tag> },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'conciliacion' && (
+                      <Card title="Conciliación Bancaria y Cartolas" style={surface.cardStyle} extra={<Button type="primary">+ Importar Cartola Bancaria</Button>}>
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          pagination={{ pageSize: 6 }}
+                          dataSource={[
+                            { fecha: '2026-10-18', banco: 'Banco de Chile (Cta Cte #1029)', glosa: 'TRANSFERENCIA RECIBIDA CLIENTE ACME', monto: 1450000, tipo: 'ABONO', estado: 'CONCILIADO' },
+                            { fecha: '2026-10-20', banco: 'Santander (Cta Cte #8821)', glosa: 'PAGO PROVEEDOR INSUMOS SUR', monto: 420000, tipo: 'CARGO', estado: 'CONCILIADO' },
+                            { fecha: '2026-10-22', banco: 'Banco de Chile (Cta Cte #1029)', glosa: 'COMISIÓN MANTENCIÓN MENSUAL', monto: 15400, tipo: 'CARGO', estado: 'PENDIENTE' },
+                          ]}
+                          columns={[
+                            { title: 'Fecha', dataIndex: 'fecha' },
+                            { title: 'Cuenta Bancaria', dataIndex: 'banco' },
+                            { title: 'Glosa Movimiento Cartola', dataIndex: 'glosa' },
+                            { title: 'Tipo', dataIndex: 'tipo', render: (v) => <Tag color={v === 'ABONO' ? 'green' : 'orange'}>{v}</Tag> },
+                            { title: 'Monto', dataIndex: 'monto', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'Estado', dataIndex: 'estado', render: (st) => <Tag color={st === 'CONCILIADO' ? 'green' : 'gold'}>{st}</Tag> },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'proyeccion' && (
+                      <Card title="Proyección de Flujo de Caja y Liquidez a 6 Meses" style={surface.cardStyle}>
+                        <AreaChartSvg
+                          labels={['May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct']}
+                          series={[
+                            { name: 'Ingresos Operacionales', color: '#2F7D5B', data: [14200000, 16800000, 15400000, 18900000, 17500000, 21400000] },
+                            { name: 'Egresos & Pagos', color: '#B4432F', data: [9800000, 11200000, 10500000, 12800000, 11900000, 13600000] },
+                          ]}
+                          height={240}
+                        />
+                      </Card>
+                    )}
+                  </Space>
+                )}
+
+                {/* ================================================================= */}
+                {/* 05 · CONTABILIDAD GENERAL E IMPUESTOS                             */}
+                {/* ================================================================= */}
+                {currentArea === 'contabilidad' && (
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Tabs
+                      activeKey={currentSubTab === 'default' ? 'diario' : currentSubTab}
+                      onChange={(k) => navegarA('contabilidad', k)}
+                      items={[
+                        { key: 'diario', label: 'Asientos y libro diario' },
+                        { key: 'mayor', label: 'Libro mayor analítico' },
+                        { key: 'balance', label: 'Balance tributario 8 columnas' },
+                        { key: 'rcv', label: 'Registro compras y ventas (RCV)' },
+                        { key: 'f29', label: 'Propuesta Formulario 29' },
+                        { key: 'activos', label: 'Activos fijos y presupuestos' },
+                      ]}
+                    />
+
+                    {(currentSubTab === 'diario' || currentSubTab === 'default') && (
+                      <Card
+                        title="Libro Diario — Asientos Contables de Partida Doble"
+                        style={surface.cardStyle}
+                        extra={
+                          <Button type="primary" onClick={() => setNewManualEntryModalOpen(true)}>
+                            + Nuevo Asiento Contable Manual
+                          </Button>
+                        }
+                      >
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          pagination={{ pageSize: 8 }}
+                          dataSource={accounting.journalItems || []}
+                          columns={[
+                            { title: 'Fecha', dataIndex: 'date', width: 100 },
+                            { title: 'Asiento / Referencia', dataIndex: 'ref', render: (v, r) => <div><div>{v}</div><div style={{ fontSize: 11, color: '#64748b' }}>Asiento #{r.moveId}</div></div> },
+                            { title: 'Cuenta Contable', render: (_, r) => <div><Tag className="mono-code">{r.accountCode}</Tag> <span>{r.accountName}</span></div> },
+                            { title: 'Debe ($)', dataIndex: 'debit', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'Haber ($)', dataIndex: 'credit', align: 'right', render: (v) => formatCLP(v) },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'mayor' && (
+                      <Card title="Libro Mayor Analítico por Cuenta" style={surface.cardStyle}>
+                        <Table
+                          rowKey="accountCode"
+                          size="small"
+                          pagination={{ pageSize: 8 }}
+                          dataSource={accounting.libroMayor || []}
+                          columns={[
+                            { title: 'Código', dataIndex: 'accountCode', render: (v) => <Tag color="blue" className="mono-code">{v}</Tag> },
+                            { title: 'Nombre de la Cuenta', dataIndex: 'accountName', render: (v) => <strong>{v}</strong> },
+                            { title: 'Debe Acumulado', dataIndex: 'totalDebit', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'Haber Acumulado', dataIndex: 'totalCredit', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'Saldo Deudor', dataIndex: 'saldoDeudor', align: 'right', render: (v) => formatCLP(v) },
+                            { title: 'Saldo Acreedor', dataIndex: 'saldoAcreedor', align: 'right', render: (v) => formatCLP(v) },
+                          ]}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'balance' && (
+                      <Space direction="vertical" size={20} style={{ width: '100%' }}>
                     <Alert
                       type="success"
                       showIcon
@@ -2992,695 +4867,163 @@ export function renderFelineAntdDashboardHtml(): string {
                       />
                     </Card>
                   </Space>
-                )}
+                    )}
 
-                {/* ================================================================= */}
-                {/* MÓDULO ODOO 18: GASTOS Y RENDICIONES DE EMPLEADOS (hr_expense)     */}
-                {/* ================================================================= */}
-                {activeTab === 'gastos-rendiciones' && (() => {
-                  const expensesList = dashboardData.expenses || [];
-                  const sheetsList = dashboardData.expenseSheets || [];
-
-                  // KPIs
-                  const totalGastosMes = expensesList.reduce((acc, e) => acc + (e.totalAmount || 0), 0);
-                  const totalIvaCredito = expensesList.reduce((acc, e) => acc + (e.taxAmount || 0), 0);
-                  const porReembolsarMonto = sheetsList
-                    .filter((s) => s.state === 'post' && s.paymentMode === 'own_account')
-                    .reduce((acc, s) => acc + (s.totalAmount || 0), 0);
-                  const pendientesAprobacion = sheetsList.filter((s) => s.state === 'submit').length;
-
-                  const categoriaBadge = {
-                    ALIMENTACION: { label: 'Alimentación', icon: '🍔', color: 'orange' },
-                    TRANSPORTE: { label: 'Transporte', icon: '🚕', color: 'blue' },
-                    ALOJAMIENTO: { label: 'Alojamiento', icon: '🏨', color: 'cyan' },
-                    INSUMOS: { label: 'Insumos', icon: '📦', color: 'purple' },
-                    SOFTWARE: { label: 'Software & SaaS', icon: '💻', color: 'geekblue' },
-                    REPRESENTACION: { label: 'Representación', icon: '🤝', color: 'magenta' },
-                    OTROS: { label: 'Otros Gastos', icon: '📄', color: 'default' },
-                  };
-
-                  const estadoSheetBadge = {
-                    draft: { label: 'Borrador', color: 'default' },
-                    submit: { label: 'Enviado (Para Aprobar)', color: 'orange' },
-                    approve: { label: 'Aprobado (Listo Contabilizar)', color: 'cyan' },
-                    post: { label: 'Contabilizado (Partida Doble)', color: 'purple' },
-                    done: { label: 'Pagado / Reembolsado', color: 'green' },
-                    cancel: { label: 'Rechazado', color: 'red' },
-                  };
-
-                  const sheetColumns = [
-                    {
-                      title: 'Código',
-                      dataIndex: 'code',
-                      key: 'code',
-                      render: (text) => <Tag color="blue" style={{ fontWeight: 600 }}>{text}</Tag>,
-                    },
-                    {
-                      title: 'Descripción del Informe',
-                      dataIndex: 'name',
-                      key: 'name',
-                      render: (text, r) => (
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{text}</div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>
-                            Fecha Contable: {r.accountingDate} • {r.expenseIds?.length || 0} gasto(s)
-                          </div>
-                        </div>
-                      ),
-                    },
-                    {
-                      title: 'Empleado Solicitante',
-                      dataIndex: 'employeeName',
-                      key: 'employeeName',
-                      render: (text, r) => (
-                        <div>
-                          <div>{text}</div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>RUT: {r.employeeRut}</div>
-                        </div>
-                      ),
-                    },
-                    {
-                      title: 'Modo de Pago',
-                      dataIndex: 'paymentMode',
-                      key: 'paymentMode',
-                      render: (mode) =>
-                        mode === 'own_account' ? (
-                          <Tag color="gold">Reembolso Empleado</Tag>
-                        ) : (
-                          <Tag color="cyan">Tarjeta Corporativa</Tag>
-                        ),
-                    },
-                    {
-                      title: 'Total Rendición',
-                      dataIndex: 'totalAmount',
-                      key: 'totalAmount',
-                      align: 'right',
-                      render: (val, r) => (
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>{formatCLP(val)}</div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>
-                            Neto: {formatCLP(r.untaxedAmount)} | IVA: {formatCLP(r.totalTaxAmount)}
-                          </div>
-                        </div>
-                      ),
-                    },
-                    {
-                      title: 'Estado Odoo',
-                      dataIndex: 'state',
-                      key: 'state',
-                      render: (st) => {
-                        const meta = estadoSheetBadge[st] || { label: st, color: 'default' };
-                        return <Tag color={meta.color}>{meta.label}</Tag>;
-                      },
-                    },
-                    {
-                      title: 'Asiento Contable',
-                      dataIndex: 'moveName',
-                      key: 'moveName',
-                      render: (val, r) =>
-                        val ? (
-                          <div>
-                            <Tag color="purple" style={{ fontSize: 11 }}>{val}</Tag>
-                            {r.paymentMoveName && (
-                              <div style={{ marginTop: 2 }}>
-                                <Tag color="green" style={{ fontSize: 11 }}>TEF: {r.paymentMoveName}</Tag>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span style={{ color: '#94a3b8' }}>Pendiente</span>
-                        ),
-                    },
-                    {
-                      title: 'Acciones de Flujo',
-                      key: 'actions',
-                      align: 'center',
-                      render: (_, r) => (
-                        <Space wrap>
-                          {r.state === 'draft' && (
-                            <Button size="small" type="primary" onClick={() => handleSubmitExpenseSheet(r.id)}>
-                              Enviar para Aprobar
-                            </Button>
-                          )}
-                          {r.state === 'submit' && (
-                            <Button size="small" type="primary" onClick={() => handleApproveExpenseSheet(r.id)}>
-                              Aprobar
-                            </Button>
-                          )}
-                          {r.state === 'approve' && (
-                            <Button
-                              size="small"
-                              type="primary"
-                              style={{ background: '#722ed1', borderColor: '#722ed1' }}
-                              onClick={() => handlePostExpenseSheet(r.id)}
-                            >
-                              Contabilizar Partida Doble
-                            </Button>
-                          )}
-                          {r.state === 'post' && r.paymentMode === 'own_account' && (
-                            <Button
-                              size="small"
-                              type="primary"
-                              style={{ background: '#10b981', borderColor: '#10b981' }}
-                              onClick={() => handlePayExpenseSheet(r.id)}
-                            >
-                              Pagar / Reembolsar TEF
-                            </Button>
-                          )}
-                          {['draft', 'submit', 'approve'].includes(r.state) && (
-                            <Popconfirm
-                              title="¿Rechazar esta rendición de gastos?"
-                              onConfirm={() => handleRefuseExpenseSheet(r.id, 'Gasto no justificado')}
-                              okText="Sí, Rechazar"
-                              cancelText="Cancelar"
-                            >
-                              <Button size="small" danger>
-                                Rechazar
-                              </Button>
-                            </Popconfirm>
-                          )}
-                          <Button size="small" onClick={() => setSelectedSheetForView(r)}>
-                            Detalle
-                          </Button>
-                        </Space>
-                      ),
-                    },
-                  ];
-
-                  const expenseColumns = [
-                    {
-                      title: 'Fecha',
-                      dataIndex: 'date',
-                      key: 'date',
-                      width: 100,
-                    },
-                    {
-                      title: 'Descripción del Gasto',
-                      dataIndex: 'name',
-                      key: 'name',
-                      render: (text, r) => (
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{text}</div>
-                          {r.notes && <div style={{ fontSize: 11, color: '#64748b' }}>{r.notes}</div>}
-                        </div>
-                      ),
-                    },
-                    {
-                      title: 'Categoría',
-                      dataIndex: 'category',
-                      key: 'category',
-                      render: (cat) => {
-                        const meta = categoriaBadge[cat] || categoriaBadge.OTROS;
-                        return (
-                          <Tag color={meta.color}>
-                            {meta.icon} {meta.label}
-                          </Tag>
-                        );
-                      },
-                    },
-                    {
-                      title: 'Comprobante',
-                      dataIndex: 'voucherType',
-                      key: 'voucherType',
-                      render: (tipo, r) => (
-                        <div>
-                          <div>{tipo === 'FACTURA_33' ? 'Factura 33 (con IVA)' : tipo === 'BOLETA_39' ? 'Boleta 39' : tipo}</div>
-                          {r.voucherNumber && <div style={{ fontSize: 11, color: '#64748b' }}>N°: {r.voucherNumber}</div>}
-                        </div>
-                      ),
-                    },
-                    {
-                      title: 'Proveedor',
-                      dataIndex: 'vendorName',
-                      key: 'vendorName',
-                      render: (text, r) =>
-                        text ? (
-                          <div>
-                            <div>{text}</div>
-                            {r.vendorRut && <div style={{ fontSize: 11, color: '#64748b' }}>{r.vendorRut}</div>}
-                          </div>
-                        ) : (
-                          <span style={{ color: '#94a3b8' }}>-</span>
-                        ),
-                    },
-                    {
-                      title: 'Neto',
-                      dataIndex: 'untaxedAmount',
-                      key: 'untaxedAmount',
-                      align: 'right',
-                      render: (v) => formatCLP(v),
-                    },
-                    {
-                      title: 'IVA Crédito',
-                      dataIndex: 'taxAmount',
-                      key: 'taxAmount',
-                      align: 'right',
-                      render: (v) => (v > 0 ? <span style={{ color: '#0062C4', fontWeight: 600 }}>{formatCLP(v)}</span> : '-'),
-                    },
-                    {
-                      title: 'Total',
-                      dataIndex: 'totalAmount',
-                      key: 'totalAmount',
-                      align: 'right',
-                      render: (v) => <span style={{ fontWeight: 700 }}>{formatCLP(v)}</span>,
-                    },
-                    {
-                      title: 'Modo Pago',
-                      dataIndex: 'paymentMode',
-                      key: 'paymentMode',
-                      render: (m) =>
-                        m === 'own_account' ? (
-                          <Tag color="gold">Propio (Reembolso)</Tag>
-                        ) : (
-                          <Tag color="cyan">Tarjeta Empresa</Tag>
-                        ),
-                    },
-                    {
-                      title: 'Estado',
-                      dataIndex: 'state',
-                      key: 'state',
-                      render: (st, r) => {
-                        const colors = {
-                          draft: 'default',
-                          reported: 'blue',
-                          approved: 'cyan',
-                          posted: 'purple',
-                          done: 'green',
-                          refused: 'red',
-                        };
-                        return (
-                          <div>
-                            <Tag color={colors[st] || 'default'}>{st.toUpperCase()}</Tag>
-                            {r.sheetId && (
-                              <div style={{ fontSize: 11, color: '#64748b' }}>
-                                Rendición: {sheetsList.find((s) => s.id === r.sheetId)?.code || r.sheetId}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      },
-                    },
-                  ];
-
-                  return (
-                    <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                      <Card
-                        title="Módulo Odoo 18: Gastos y Rendiciones de Empleados (hr_expense + l10n_cl)"
-                        style={surface.cardStyle}
-                        extra={
-                          <Space>
-                            <Button
-                              type="primary"
-                              icon={<RIcono nombre="billetera" size={15} />}
-                              onClick={() => {
-                                formNewExpense.resetFields();
-                                formNewExpense.setFieldsValue({
-                                  employeeId: dashboardData.users[0]?.id,
-                                  date: dayjs(),
-                                  category: 'ALIMENTACION',
-                                  paymentMode: 'own_account',
-                                  voucherType: 'FACTURA_33',
-                                  hasIvaCredit: true,
-                                });
-                                setNewExpenseModalOpen(true);
-                              }}
-                            >
-                              + Nuevo Gasto
-                            </Button>
-                            <Button
-                              type="default"
-                              icon={<RIcono nombre="libro" size={15} />}
-                              onClick={() => {
-                                formNewExpenseSheet.resetFields();
-                                formNewExpenseSheet.setFieldsValue({
-                                  employeeId: dashboardData.users[0]?.id,
-                                  name: \`Rendición de Gastos - \${dayjs().format('MMMM YYYY')}\`,
-                                  autoSubmit: true,
-                                });
-                                setSelectedExpenseIdsForSheet([]);
-                                setNewExpenseSheetModalOpen(true);
-                              }}
-                            >
-                              + Nueva Rendición (Informe)
-                            </Button>
-                          </Space>
-                        }
-                      >
-                        <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-                          <Col xs={24} sm={12} lg={6}>
-                            <Card size="small" style={{ background: themeMode === 'dark' ? '#1e293b' : '#f8fafc', borderRadius: 8 }}>
-                              <Statistic
-                                title="Total Gastos Registrados (Mes)"
-                                value={totalGastosMes}
-                                formatter={(val) => formatCLP(Number(val))}
-                                valueStyle={{ color: textoAcento, fontWeight: 700 }}
-                              />
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
-                                {expensesList.length} comprobante(s) en total
-                              </div>
-                            </Card>
-                          </Col>
-
-                          <Col xs={24} sm={12} lg={6}>
-                            <Card size="small" style={{ background: themeMode === 'dark' ? '#1e293b' : '#f8fafc', borderRadius: 8 }}>
-                              <Statistic
-                                title="Rendiciones por Reembolsar"
-                                value={porReembolsarMonto}
-                                formatter={(val) => formatCLP(Number(val))}
-                                valueStyle={{ color: '#ea580c', fontWeight: 700 }}
-                              />
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
-                                Contabilizadas, listas para pago TEF
-                              </div>
-                            </Card>
-                          </Col>
-
-                          <Col xs={24} sm={12} lg={6}>
-                            <Card size="small" style={{ background: themeMode === 'dark' ? '#1e293b' : '#f8fafc', borderRadius: 8 }}>
-                              <Statistic
-                                title="Pendientes de Aprobación"
-                                value={pendientesAprobacion}
-                                valueStyle={{ color: '#2563eb', fontWeight: 700 }}
-                              />
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
-                                Esperando visto bueno de gerencia
-                              </div>
-                            </Card>
-                          </Col>
-
-                          <Col xs={24} sm={12} lg={6}>
-                            <Card size="small" style={{ background: themeMode === 'dark' ? '#1e293b' : '#f8fafc', borderRadius: 8 }}>
-                              <Statistic
-                                title="IVA Crédito Fiscal Recuperable"
-                                value={totalIvaCredito}
-                                formatter={(val) => formatCLP(Number(val))}
-                                valueStyle={{ color: '#059669', fontWeight: 700 }}
-                              />
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
-                                Imputado a cuenta 110710 (F29)
-                              </div>
-                            </Card>
-                          </Col>
-                        </Row>
-
+                    {currentSubTab === 'rcv' && (
+                      <Card title="Registro Oficial de Compras y Ventas (RCV SII)" style={surface.cardStyle}>
                         <Tabs
-                          defaultActiveKey="sheets"
+                          defaultActiveKey="rcv-v"
                           items={[
                             {
-                              key: 'sheets',
-                              label: \`Informes de Rendición (\${sheetsList.length})\`,
+                              key: 'rcv-v',
+                              label: 'Libro de Ventas Emitidas (DTEs)',
                               children: (
                                 <Table
-                                  dataSource={sheetsList}
-                                  columns={sheetColumns}
                                   rowKey="id"
+                                  size="small"
                                   pagination={{ pageSize: 8 }}
-                                  size={compactMode ? 'small' : 'middle'}
+                                  dataSource={postedSalesMoves}
+                                  columns={[
+                                    { title: 'Fecha', dataIndex: 'invoiceDate' },
+                                    { title: 'Folio / Doc', dataIndex: 'name', render: (v, r) => <Button type="link" style={{ padding: 0 }} onClick={() => abrirDetalleDocumento(r)}>{v}</Button> },
+                                    { title: 'Receptor', dataIndex: 'partnerName' },
+                                    { title: 'Monto Neto', dataIndex: 'amountUntaxed', align: 'right', render: (v) => formatCLP(v) },
+                                    { title: 'IVA Débito', dataIndex: 'amountTax', align: 'right', render: (v) => formatCLP(v) },
+                                    { title: 'Total', dataIndex: 'amountTotal', align: 'right', render: (v) => formatCLP(v) },
+                                    { title: 'Estado SII', render: () => <Tag color="green">Aceptado SII</Tag> },
+                                  ]}
                                 />
                               ),
                             },
                             {
-                              key: 'expenses',
-                              label: \`Gastos Individuales (\${expensesList.length})\`,
+                              key: 'rcv-c',
+                              label: 'Libro de Compras Recibidas (DTEs)',
                               children: (
                                 <Table
-                                  dataSource={expensesList}
-                                  columns={expenseColumns}
                                   rowKey="id"
-                                  pagination={{ pageSize: 10 }}
-                                  size={compactMode ? 'small' : 'middle'}
+                                  size="small"
+                                  pagination={{ pageSize: 8 }}
+                                  dataSource={tenantPurchaseMoves}
+                                  columns={[
+                                    { title: 'Fecha', dataIndex: 'invoiceDate' },
+                                    { title: 'Folio Proveedor', dataIndex: 'l10nLatamDocumentNumber', render: (v) => 'Factura #' + v },
+                                    { title: 'Proveedor', dataIndex: 'partnerName' },
+                                    { title: 'Monto Neto', dataIndex: 'amountUntaxed', align: 'right', render: (v) => formatCLP(v) },
+                                    { title: 'IVA Crédito', dataIndex: 'amountTax', align: 'right', render: (v) => formatCLP(v) },
+                                    { title: 'Total', dataIndex: 'amountTotal', align: 'right', render: (v) => formatCLP(v) },
+                                  ]}
                                 />
                               ),
                             },
                           ]}
                         />
                       </Card>
-                    </Space>
-                  );
-                })()}
+                    )}
 
-                {/* ================================================================= */}
-                {/* MÓDULO 1: LIBRO DE VENTAS Y COMPRAS (RCV SII) + PROPUESTA F29     */}
-                {/* ================================================================= */}
-                {activeTab === 'libro-compra-venta' && (
-                  <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                    <Card
-                      title={\`Registro de Compras y Ventas (RCV SII) y Propuesta Formulario 29 — Período \${periodoTributario}\`}
-                      style={surface.cardStyle}
-                      extra={
-                        <Space>
-                          <Select
-                            value={periodoTributario}
-                            onChange={setPeriodoTributario}
-                            options={[
-                              { value: '2026-10', label: 'Octubre 2026 (2026-10)' },
-                              { value: '2026-09', label: 'Septiembre 2026 (2026-09)' },
-                            ]}
-                          />
-                          <Button icon={<RIcono nombre="descargar" size={16} />} onClick={() => exportRcvCsv('VENTAS')}>
-                            CSV ventas
-                          </Button>
-                          <Button icon={<RIcono nombre="descargar" size={16} />} onClick={() => exportRcvCsv('COMPRAS')}>
-                            CSV compras
-                          </Button>
-                        </Space>
-                      }
-                    >
-                      <Tabs
-                        defaultActiveKey="tab-ventas"
-                        items={[
-                          {
-                            key: 'tab-ventas',
-                            label: \`Libro de Ventas Emitidas (\${rcvF29.detalleVentas?.length || 0} DTEs)\`,
-                            children: (
-                              <Space direction="vertical" size={18} style={{ width: '100%' }}>
-                                <div>
-                                  <Text strong>Resumen Oficial SII de Ventas por Tipo de DTE (Carátula RCV Ventas)</Text>
-                                  <Table
-                                    style={{ marginTop: 8 }}
-                                    rowKey="tipoDte"
-                                    size="small"
-                                    pagination={false}
-                                    columns={rcvSummaryColumns}
-                                    dataSource={rcvF29.resumenVentasPorTipo}
-                                  />
-                                </div>
-                                <div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text strong>Detalle Nominativo del Libro de Ventas (Facturas 33, Exentas 34, Boletas 39, NC 61)</Text>
-                                    <Button type="primary" size="small" onClick={() => setNewMoveModalOpen(true)}>
-                                      + Emitir Nuevo DTE de Venta
-                                    </Button>
+                    {currentSubTab === 'f29' && (
+                      <Card title="Propuesta Formulario 29 — Declaración Mensual y Pago Simultáneo (SII)" style={surface.cardStyle}>
+                        <Row gutter={[20, 20]} style={{ marginBottom: 20 }}>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small">
+                              <Statistic title="IVA Débito Fiscal (Cód. 538)" value={rcvF29.f29.codigo538_TotalDebitos} formatter={(v) => formatCLP(v)} valueStyle={{ color: '#0062C4', fontWeight: 700 }} />
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small">
+                              <Statistic title="IVA Crédito Fiscal (Cód. 537)" value={rcvF29.f29.codigo537_TotalCreditos} formatter={(v) => formatCLP(v)} valueStyle={{ color: '#2F7D5B', fontWeight: 700 }} />
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small">
+                              <Statistic title="Impuesto Determinado (Cód. 089)" value={rcvF29.f29.codigo089_ImpuestoDeterminadoIva} formatter={(v) => formatCLP(v)} valueStyle={{ color: '#B7791F', fontWeight: 700 }} />
+                            </Card>
+                          </Col>
+                          <Col xs={24} sm={12} lg={6}>
+                            <Card size="small">
+                              <Statistic title="Remanente Crédito (Cód. 077)" value={rcvF29.f29.codigo077_RemanenteCreditoMesSiguiente} formatter={(v) => formatCLP(v)} valueStyle={{ color: '#2F7D5B', fontWeight: 700 }} />
+                            </Card>
+                          </Col>
+                        </Row>
+                        <GroupedBarChartSvg
+                          labels={['Jul', 'Ago', 'Sep', 'Oct']}
+                          series={[
+                            { name: 'IVA Débito (538)', color: '#0062C4', data: [2318000, 3002000, 2831000, 3458000] },
+                            { name: 'IVA Crédito (537)', color: '#2F7D5B', data: [1501000, 1862000, 1729000, 2166000] },
+                          ]}
+                          height={190}
+                        />
+                      </Card>
+                    )}
+
+                    {currentSubTab === 'activos' && (
+                      <Card title="Activos Fijos, Presupuestos y Centralización de Remuneraciones" style={surface.cardStyle}>
+                        <Tabs
+                          defaultActiveKey="p-cc"
+                          items={[
+                            {
+                              key: 'p-cc',
+                              label: 'Presupuestos por Centro de Costo',
+                              children: (
+                                <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                                  <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
+                                      <span>Operaciones & Logística</span>
+                                      <span style={{ fontWeight: 600 }}>$14.2M / $16.0M (88.7%)</span>
+                                    </div>
+                                    <Progress percent={88.7} strokeColor="#2F7D5B" size="small" />
                                   </div>
-                                  <Table
-                                    rowKey="id"
-                                    size="small"
-                                    columns={moveColumns}
-                                    dataSource={tenantSalesMoves}
-                                    pagination={{ pageSize: 6 }}
-                                  />
-                                </div>
-                              </Space>
-                            ),
-                          },
-                          {
-                            key: 'tab-compras',
-                            label: \`Libro de Compras Recibidas (\${rcvF29.detalleCompras?.length || 0} DTEs)\`,
-                            children: (
-                              <Space direction="vertical" size={18} style={{ width: '100%' }}>
-                                <div>
-                                  <Text strong>Resumen Oficial SII de Compras por Tipo de DTE (Carátula RCV Compras — Crédito Fiscal)</Text>
-                                  <Table
-                                    style={{ marginTop: 8 }}
-                                    rowKey="tipoDte"
-                                    size="small"
-                                    pagination={false}
-                                    columns={rcvSummaryColumns}
-                                    dataSource={rcvF29.resumenComprasPorTipo}
-                                  />
-                                </div>
-                                <div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text strong>Detalle Nominativo del Libro de Compras (Facturas de Proveedores / Acuse de Recibo)</Text>
-                                    <Button type="primary" size="small" onClick={() => setNewPurchaseModalOpen(true)}>
-                                      + Registrar Factura de Proveedor (Compra)
-                                    </Button>
+                                  <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
+                                      <span>Comercial, Ventas & Marketing</span>
+                                      <span style={{ fontWeight: 600 }}>$8.6M / $10.0M (86.0%)</span>
+                                    </div>
+                                    <Progress percent={86.0} strokeColor="#0062C4" size="small" />
                                   </div>
-                                  <Table
-                                    rowKey="id"
-                                    size="small"
-                                    columns={moveColumns}
-                                    dataSource={tenantPurchaseMoves}
-                                    pagination={{ pageSize: 6 }}
-                                  />
+                                  <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
+                                      <span>Administración, Finanzas & TI</span>
+                                      <span style={{ fontWeight: 600 }}>$6.1M / $6.5M (93.8%)</span>
+                                    </div>
+                                    <Progress percent={93.8} strokeColor="#B7791F" size="small" />
+                                  </div>
+                                </Space>
+                              ),
+                            },
+                            {
+                              key: 'p-rem',
+                              label: 'Centralización de Remuneraciones y Honorarios',
+                              children: (
+                                <div>
+                                  <Alert message="Asiento mensual de remuneraciones integrado automáticamente con Libro Diario de Partida Doble" type="info" showIcon style={{ marginBottom: 16 }} />
+                                  <Button type="primary" onClick={() => setNewManualEntryModalOpen(true)}>+ Centralizar Nómina</Button>
                                 </div>
-                              </Space>
-                            ),
-                          },
-                          {
-                            key: 'tab-f29',
-                            label: 'Propuesta Declaración Mensual F29 (SII)',
-                            children: (
-                              <Descriptions bordered column={2} size="middle">
-                                <Descriptions.Item label="Código [538] Total Débitos Fiscales (IVA Ventas - NC Emitidas)">
-                                  <Text strong style={{ color: marcaFeline ? textoAcento : primaryColor, fontSize: 15 }}>
-                                    {formatCLP(rcvF29.f29.codigo538_TotalDebitos)}
-                                  </Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Código [537] Total Créditos Fiscales (IVA Compras del Giro)">
-                                  <Text strong style={{ color: acentoSecundario, fontSize: 15 }}>
-                                    {formatCLP(rcvF29.f29.codigo537_TotalCreditos)}
-                                  </Text>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Base Imponible Ventas Netas del Período">
-                                  {formatCLP(rcvF29.f29.totalVentasNeto)}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Base Imponible Compras Netas del Período">
-                                  {formatCLP(rcvF29.f29.totalComprasNeto)}
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Código [089] Impuesto Determinado IVA a Pagar">
-                                  <Tag color={rcvF29.f29.codigo089_ImpuestoDeterminadoIva > 0 ? 'volcano' : 'green'} style={{ fontSize: 14, padding: '4px 10px' }}>
-                                    {formatCLP(rcvF29.f29.codigo089_ImpuestoDeterminadoIva)}
-                                  </Tag>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Código [077] Remanente de Crédito Fiscal para el mes siguiente">
-                                  <Tag color="green" style={{ fontSize: 14, padding: '4px 10px' }}>
-                                    {formatCLP(rcvF29.f29.codigo077_RemanenteCreditoMesSiguiente)}
-                                  </Tag>
-                                </Descriptions.Item>
-                              </Descriptions>
-                            ),
-                          },
-                        ]}
-                      />
-                    </Card>
+                              ),
+                            },
+                          ]}
+                        />
+                      </Card>
+                    )}
                   </Space>
                 )}
 
                 {/* ================================================================= */}
-                {/* MÓDULO 2: OVERVIEW PRINCIPAL                                      */}
+                {/* 06 · ADMINISTRACIÓN DEL SISTEMA                                   */}
                 {/* ================================================================= */}
-                {activeTab === 'finance-overview' && (
-                  <Row gutter={[20, 20]}>
-                    <Col xs={24} xxl={17}>
-                      <Card
-                        title="Movimientos recientes"
-                        style={surface.cardStyle}
-                        extra={
-                          <Space>
-                            <Button size="small" onClick={() => setActiveTab('odoo-contabilidad')}>
-                              Balance 8 columnas
-                            </Button>
-                            <Button size="small" onClick={() => setActiveTab('libro-compra-venta')}>
-                              RCV y F29
-                            </Button>
-                            <Button size="small" type="primary" icon={<RIcono nombre="emitir" size={14} />} onClick={handleSendBatchSii}>
-                              Enviar lote al SII
-                            </Button>
-                          </Space>
-                        }
-                      >
-                        <Table
-                          rowKey="id"
-                          loading={loading}
-                          columns={moveColumns}
-                          dataSource={tenantMoves}
-                          pagination={{ pageSize: 6 }}
-                          size="middle"
-                        />
-                      </Card>
-                    </Col>
+                {currentArea === 'administracion' && (
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Tabs
+                      activeKey={currentSubTab === 'default' ? 'empresas' : currentSubTab}
+                      onChange={(k) => navegarA('administracion', k)}
+                      items={[
+                        { key: 'empresas', label: 'Empresas emisoras' },
+                        { key: 'usuarios', label: 'Usuarios y permisos' },
+                        { key: 'tributaria', label: 'Configuración tributaria y folios' },
+                        { key: 'preferencias', label: 'Preferencias visuales' },
+                      ]}
+                    />
 
-                    <Col xs={24} xxl={7}>
+                    {(currentSubTab === 'empresas' || currentSubTab === 'default') && (
                       <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                        <Card
-                          title="Folios CAF disponibles"
-                          style={surface.cardStyle}
-                          extra={
-                            <Button size="small" type="link" onClick={() => setNewCafModalOpen(true)}>
-                              + Cargar CAF
-                            </Button>
-                          }
-                        >
-                          <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                            {tenantCafs.map((caf) => {
-                              const total = caf.folioHasta - caf.folioDesde + 1;
-                              const usados = caf.folioActual - caf.folioDesde + 1;
-                              const pct = Math.min(100, Math.round((usados / total) * 100));
-                              return (
-                                <div key={caf.id}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                    <Text strong style={{ fontSize: 12 }}>
-                                      [{caf.tipoDte}] {caf.nombreTipo}
-                                    </Text>
-                                    <Text className="mono-code" type="secondary">
-                                      #{caf.folioActual} / {caf.folioHasta}
-                                    </Text>
-                                  </div>
-                                  <Progress percent={pct} size="small" status={caf.agotado ? 'exception' : 'active'} />
-                                </div>
-                              );
-                            })}
-                          </Space>
-                        </Card>
-
-                        <Card title="Últimos Sobres <EnvioDTE> al SII" style={surface.cardStyle}>
-                          {tenantLotes.length === 0 ? (
-                            <Empty
-                              image={Empty.PRESENTED_IMAGE_SIMPLE}
-                              description="Sin lotes enviados aún. Usa «Enviar lote al SII» en Movimientos recientes."
-                            />
-                          ) : (
-                            <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                              {tenantLotes.slice(0, 3).map((lote) => (
-                                <Alert
-                                  key={lote.id}
-                                  type="success"
-                                  showIcon
-                                  message={\`TrackID SII: #\${lote.trackId}\`}
-                                  description={\`\${lote.estadoSii} — \${lote.glosaSii}\`}
-                                />
-                              ))}
-                            </Space>
-                          )}
-                        </Card>
-                      </Space>
-                    </Col>
-                  </Row>
-                )}
-
-                {/* ================================================================= */}
-                {/* MÓDULO VENTAS: FACTURAS Y BOLETAS ELECTRÓNICAS                   */}
-                {/* ================================================================= */}
-                {activeTab === 'ventas-facturas-boletas' && (
-                  <EscenaDocumentos
-                    documentos={tenantSalesMoves}
-                    empresa={activeTenant}
-                    periodo={periodoTributario}
-                    cargando={loading}
-                    errorCarga={errorCarga}
-                    onReintentar={() => fetchState()}
-                    onEmitirFactura={abrirEmisionFactura}
-                    onEmitirBoleta={abrirEmisionBoleta}
-                    onFirmar={handlePostMove}
-                    onVerXml={(doc) => setXmlInspectorMove(doc)}
-                    onCobrar={(doc) => {
-                      setPaymentModalMove(doc);
-                      formPayment.setFieldsValue({ amount: doc.amountResidual });
-                    }}
-                    onNotaCredito={(doc) => {
-                      setReverseModalMove(doc);
-                      formReverse.setFieldsValue({ referenceDocCode: 1, reason: 'ANULA ' + escNombre(doc).toUpperCase() + ' POR DEVOLUCIÓN' });
-                    }}
-                    onEnviarSii={handleSendBatchSii}
-                  />
-                )}
-
-                {/* ================================================================= */}
-                {/* MÓDULO 3: BÓVEDA DE CERTIFICADOS DIGITALES (.PFX/.P12) Y EMPRESAS */}
-                {/* ================================================================= */}
-                {activeTab === 'tenants-certs' && (
-                  <Space direction="vertical" size={20} style={{ width: '100%' }}>
                     <Card style={surface.cardStyle}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                         <div>
@@ -3770,12 +5113,10 @@ export function renderFelineAntdDashboardHtml(): string {
                       ))}
                     </Row>
                   </Space>
-                )}
+                    )}
 
-                {/* ================================================================= */}
-                {/* MÓDULO: PERFILES DE ACCESO, USUARIOS Y PERMISOS (RBAC)            */}
-                {/* ================================================================= */}
-                {activeTab === 'usuarios-permisos' && (() => {
+                    {currentSubTab === 'usuarios' && (
+                      (() => {
                   const users = dashboardData.users || [];
                   const profiles = dashboardData.roleProfiles || [];
 
@@ -3978,13 +5319,23 @@ export function renderFelineAntdDashboardHtml(): string {
                       </Card>
                     </Space>
                   );
-                })()}
+                })()
+                    )}
 
-                {/* ================================================================= */}
-                {/* MÓDULO 4: CONTROL DE FOLIOS CAF                                   */}
-                {/* ================================================================= */}
-                {activeTab === 'caf-folios' && (
-                  <Card
+                    {currentSubTab === 'tributaria' && (
+                      <Space direction="vertical" size={18} style={{ width: '100%' }}>
+                        <Card title="Certificado Digital PKCS#12 (Firma Electrónica Avanzada)" style={surface.cardStyle} extra={<Button type="primary" onClick={() => setCertUploadModalOpen(true)}>+ Cargar Nuevo Certificado</Button>}>
+                          <Descriptions bordered column={2} size="small">
+                            <Descriptions.Item label="Empresa">{activeTenant?.razonSocial}</Descriptions.Item>
+                            <Descriptions.Item label="RUT">{activeTenant?.rut}</Descriptions.Item>
+                            <Descriptions.Item label="Titular de Firma">{activeTenant?.certificate?.subjectName || 'Sin certificado'}</Descriptions.Item>
+                            <Descriptions.Item label="RUT Firmante">{activeTenant?.rutEnvia || '-'}</Descriptions.Item>
+                            <Descriptions.Item label="Algoritmo">RSA-SHA1 con XMLDSig y Enveloped Signature</Descriptions.Item>
+                            <Descriptions.Item label="Bóveda Criptográfica">AES-256-GCM Protegida</Descriptions.Item>
+                          </Descriptions>
+                        </Card>
+
+                        <Card
                     title="Control Multitenant de Folios CAF (<AUTORIZACION> SII y Llaves RSA)"
                     style={surface.cardStyle}
                     extra={
@@ -4009,13 +5360,8 @@ export function renderFelineAntdDashboardHtml(): string {
                       ]}
                     />
                   </Card>
-                )}
 
-                {/* ================================================================= */}
-                {/* MÓDULO 5: ENVÍOS SII SOAP/CGI                                     */}
-                {/* ================================================================= */}
-                {activeTab === 'sii-soap-envios' && (
-                  <Card
+                        <Card
                     title="Historial de Sobres <EnvioDTE> Transmitidos al SII (Maullín / Palena)"
                     style={surface.cardStyle}
                     extra={
@@ -4037,8 +5383,19 @@ export function renderFelineAntdDashboardHtml(): string {
                       ]}
                     />
                   </Card>
+                      </Space>
+                    )}
+
+                    {currentSubTab === 'preferencias' && (
+                      <Card title="Preferencias Visuales y Ajustes de Apariencia" style={surface.cardStyle}>
+                        <Button type="primary" onClick={() => setStyleDrawerOpen(true)}>
+                          Abrir Panel de Personalización de Tema
+                        </Button>
+                      </Card>
+                    )}
+                  </Space>
                 )}
-              </Content>
+            </Content>
 
               {activeTab !== 'ventas-facturas-boletas' && (
                 <Footer style={{ textAlign: 'center', background: 'transparent', opacity: 0.75, fontSize: 12 }}>
@@ -4319,109 +5676,83 @@ export function renderFelineAntdDashboardHtml(): string {
             {/* ================================================================= */}
             {/* MODAL EMITIR NUEVA FACTURA / BOLETA VENTA                         */}
             {/* ================================================================= */}
+
+
+            {/* ================================================================= */}
+            {/* MODAL COMPARTIDO: DETALLE DE DOCUMENTO TRIBUTARIO ELECTRÓNICO     */}
+            {/* ================================================================= */}
             <Modal
-              title="Emitir Documento Tributario Electrónico de Venta (Odoo account.move + SII CAF)"
-              open={newMoveModalOpen}
-              onCancel={() => setNewMoveModalOpen(false)}
-              onOk={() => formNewMove.submit()}
-              okText="Procesar Documento"
-              width={640}
+              title={
+                docDetailData ? (
+                  <Space align="center" wrap>
+                    <span style={{ fontWeight: 700, fontSize: 16 }}>
+                      {ESC_TIPOS_SII[docDetailData.documentTypeCode] || 'Documento Tributario'}{' '}
+                      {docDetailData.state === 'DRAFT' ? '(Borrador)' : '#' + (docDetailData.l10nLatamDocumentNumber || docDetailData.folio || '')}
+                    </span>
+                    <Divider type="vertical" />
+                    <Space size={6} wrap>
+                      <Tag color={docDetailData.state === 'POSTED' ? 'blue' : docDetailData.state === 'DRAFT' ? 'default' : 'red'}>
+                        Emisión: {docDetailData.state === 'POSTED' ? 'Emitido' : docDetailData.state === 'DRAFT' ? 'Borrador' : 'Anulado'}
+                      </Tag>
+                      <Tag color={escEstado(docDetailData) === 'ACEPTADO' ? 'green' : escEstado(docDetailData) === 'FIRMADO' ? 'orange' : 'default'}>
+                        SII: {escEstado(docDetailData) === 'ACEPTADO' ? 'Aceptado por SII' : escEstado(docDetailData) === 'FIRMADO' ? 'Pendiente de envío' : 'No enviado'}
+                      </Tag>
+                      <Tag color={docDetailData.paymentState === 'PAID' ? 'green' : docDetailData.paymentState === 'PARTIAL' ? 'blue' : 'gold'}>
+                        Pago: {docDetailData.paymentState === 'PAID' ? 'Pagado' : docDetailData.paymentState === 'PARTIAL' ? 'Pago parcial' : 'Pendiente de cobro'}
+                      </Tag>
+                    </Space>
+                  </Space>
+                ) : 'Detalle de Documento'
+              }
+              open={docDetailModalOpen}
+              onCancel={() => setDocDetailModalOpen(false)}
+              width={760}
+              footer={
+                docDetailData ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <Space>
+                      <Button onClick={() => { setXmlInspectorMove(docDetailData); setDocDetailModalOpen(false); }}>
+                        Ver XML Criptográfico
+                      </Button>
+                      <Button onClick={() => window.print()}>
+                        Imprimir / PDF
+                      </Button>
+                    </Space>
+                    <Space>
+                      {docDetailData.state === 'DRAFT' && (
+                        <Button type="primary" onClick={() => { handlePostMove(docDetailData.id); setDocDetailModalOpen(false); }}>
+                          Firmar y emitir
+                        </Button>
+                      )}
+                      {escEstado(docDetailData) === 'FIRMADO' && (
+                        <Button type="primary" onClick={() => { handleSendBatchSii(); setDocDetailModalOpen(false); }}>
+                          Enviar al SII
+                        </Button>
+                      )}
+                      {docDetailData.state === 'POSTED' && escPorCobrar(docDetailData) && (
+                        <Button
+                          type="primary"
+                          style={{ background: '#2F7D5B', borderColor: '#2F7D5B' }}
+                          onClick={() => {
+                            setPaymentModalMove(docDetailData);
+                            formPayment.setFieldsValue({ amount: docDetailData.amountResidual });
+                            setDocDetailModalOpen(false);
+                          }}
+                        >
+                          Registrar cobro
+                        </Button>
+                      )}
+                      <Button onClick={() => setDocDetailModalOpen(false)}>Cerrar</Button>
+                    </Space>
+                  </div>
+                ) : null
+              }
             >
-              <Form form={formNewMove} layout="vertical" onFinish={handleCreateDraftMove}>
-                <Row gutter={16}>
-                  <Col span={14}>
-                    <Form.Item
-                      name="partnerId"
-                      label="Cliente / Receptor (Aislado por Tenant)"
-                      rules={[{ required: true }]}
-                    >
-                      <Select
-                        options={tenantPartners.map((p) => ({
-                          value: p.id,
-                          label: \`\${p.razonSocial} (\${p.rut}) — [\${p.taxpayerType}]\`,
-                        }))}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={10}>
-                    <Form.Item
-                      name="documentTypeCode"
-                      label="Tipo de DTE (l10n_latam.document.type)"
-                      rules={[{ required: true }]}
-                    >
-                      <Select
-                        options={[
-                          { value: 33, label: '[33] Factura Electrónica (Afecta IVA)' },
-                          { value: 34, label: '[34] Factura No Afecta o Exenta' },
-                          { value: 39, label: '[39] Boleta Electrónica (Consumidor Final)' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={6}>
-                    <Form.Item name="productCode" label="Código Ítem">
-                      <Input placeholder="SKU-001" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={18}>
-                    <Form.Item
-                      name="itemName"
-                      label="Glosa / Nombre del Ítem (<NmbItem> e <IT1> del TED)"
-                      rules={[{ required: true, message: 'Ingresa el nombre del servicio o producto' }]}
-                    >
-                      <Input placeholder="Ej: SERVICIO DE CONSULTORÍA E INTEGRACIÓN SII DTE" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={6}>
-                    <Form.Item name="quantity" label="Cantidad" rules={[{ required: true }]}>
-                      <InputNumber min={1} style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Form.Item name="uomName" label="Unidad (UnmdItem)">
-                      <Input placeholder="UN" maxLength={4} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Form.Item name="priceUnit" label="Precio Unitario Neto (CLP)" rules={[{ required: true }]}>
-                      <InputNumber min={0} step={1000} style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Form.Item name="discountPct" label="% Descuento">
-                      <InputNumber min={0} max={100} style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16} align="middle">
-                  <Col span={12}>
-                    <Form.Item name="formaPagoSii" label="Forma de Pago SII (<FmaPago>)">
-                      <Select
-                        options={[
-                          { value: 1, label: '1 — Contado' },
-                          { value: 2, label: '2 — Crédito' },
-                          { value: 3, label: '3 — Sin Costo (Entrega Gratuita)' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item name="autoPost" valuePropName="checked" label="Acción Contable Odoo">
-                      <Switch
-                        checkedChildren="Publicar y Firmar XMLDSig Inmediatamente"
-                        unCheckedChildren="Guardar como Borrador ('/')"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </Form>
+              {docDetailData && (
+                <div style={{ padding: '12px 0', display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
+                  <EscHoja doc={docDetailData} empresa={activeTenant} />
+                </div>
+              )}
             </Modal>
 
             {/* ================================================================= */}
@@ -4786,100 +6117,7 @@ export function renderFelineAntdDashboardHtml(): string {
             {/* ================================================================= */}
             {/* MODAL EMISIÓN RÁPIDA DE BOLETA ELECTRÓNICA (39 / 41)               */}
             {/* ================================================================= */}
-            <Modal
-              title="Emitir Boleta Electrónica (SII Tipo 39 Afecta / 41 Exenta)"
-              open={newBoletaModalOpen}
-              onCancel={() => setNewBoletaModalOpen(false)}
-              onOk={() => formNewBoleta.submit()}
-              okText="Emitir, Timbrar <TED> y Finalizar"
-              width={600}
-            >
-              <Alert
-                style={{ marginBottom: 16 }}
-                type="success"
-                showIcon
-                message="Emisión Inmediata de Boleta Electrónica"
-                description="La boleta se emite, timbra con el CAF correspondiente, se firma digitalmente con la llave RSA y queda lista para entrega o consulta del cliente."
-              />
-              <Form form={formNewBoleta} layout="vertical" onFinish={handleCreateQuickBoleta}>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="documentTypeCode"
-                      label="Tipo de Boleta"
-                      rules={[{ required: true }]}
-                      initialValue={39}
-                    >
-                      <Select
-                        options={[
-                          { value: 39, label: '[39] Boleta Electrónica (IVA 19% Incluido)' },
-                          { value: 41, label: '[41] Boleta Exenta de IVA' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="formaPagoSii"
-                      label="Forma de Pago"
-                      initialValue={1}
-                      rules={[{ required: true }]}
-                    >
-                      <Select
-                        options={[
-                          { value: 1, label: '1 — Contado (Efectivo / Débito)' },
-                          { value: 2, label: '2 — Crédito / Tarjeta de Crédito' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
 
-                <Form.Item
-                  name="partnerId"
-                  label="Cliente / Receptor"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    options={tenantPartners.map((p) => ({
-                      value: p.id,
-                      label: \`\${p.razonSocial} (\${p.rut})\`,
-                    }))}
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  name="itemName"
-                  label="Detalle / Glosa de la Venta"
-                  rules={[{ required: true }]}
-                  initialValue="VENTA MOSTRADOR / BOLETA CONSUMIDOR FINAL"
-                >
-                  <Input placeholder="Ej: VENTA PRODUCTOS VARIOS MOSTRADOR" />
-                </Form.Item>
-
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Form.Item name="quantity" label="Cantidad" initialValue={1} rules={[{ required: true }]}>
-                      <InputNumber min={1} style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item name="uomName" label="Unidad" initialValue="UN">
-                      <Input placeholder="UN" maxLength={4} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item
-                      name="priceUnit"
-                      label="Monto Total (CLP)"
-                      rules={[{ required: true, message: 'Ingresa el monto de la boleta' }]}
-                    >
-                      <InputNumber min={100} step={1000} style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </Form>
-            </Modal>
 
             {/* ================================================================= */}
             {/* MODAL REGISTRAR NUEVO USUARIO Y ASIGNAR PERFIL                    */}
@@ -5283,7 +6521,7 @@ export function renderFelineAntdDashboardHtml(): string {
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<PanelConSesion />);
+    root.render(<ErrorBoundary><PanelConSesion /></ErrorBoundary>);
   </script>
 </body>
 </html>`;

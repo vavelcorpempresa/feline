@@ -18,8 +18,8 @@ const fechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha AAAA-
 
 const ItemSchema = z.object({
   nombre: z.string().trim().min(1, 'Cada ítem necesita un nombre'),
-  cantidad: z.number().positive('La cantidad debe ser mayor a 0'),
-  precio: z.number().min(0, 'El precio no puede ser negativo'),
+  cantidad: z.number().finite().positive('La cantidad debe ser mayor a 0').max(Number.MAX_SAFE_INTEGER),
+  precio: z.number().finite().min(0, 'El precio no puede ser negativo').max(Number.MAX_SAFE_INTEGER),
   exento: z.boolean().optional().default(false),
   codigo: z.string().trim().max(35).optional(),
   unidad: z.string().trim().max(4).optional(),
@@ -46,6 +46,7 @@ export const DocumentoRequestSchema = z.object({
   ]),
   // Identificador del documento en el proyecto que emite (ej. id de pedido); permite buscarlo después
   referenciaExterna: z.string().trim().min(1).max(100).optional(),
+  montoConfirmado: z.number().int().positive().max(2147483647).optional(),
   fechaEmision: fechaIso.optional(),
   fechaVencimiento: fechaIso.optional(),
   formaPago: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
@@ -138,7 +139,7 @@ export class ApiDocumentosService {
       QtyItem: item.cantidad,
       UnmdItem: item.unidad,
       PrcItem: item.precio,
-      MontoItem: Math.round(item.cantidad * item.precio),
+      MontoItem: new Prisma.Decimal(String(item.cantidad)).mul(String(item.precio)).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP).toNumber(),
     }));
   }
 
@@ -222,6 +223,9 @@ export class ApiDocumentosService {
       const { referencias, advertencias } = ApiDocumentosService.toReferencias(req, fechaEmision);
 
       const { mntTotal } = DteBillingOrchestratorService.calcularTotalesSii(req.tipoDte, detalles);
+      if (req.montoConfirmado !== undefined && req.montoConfirmado !== mntTotal) {
+        throw new ApiError(422, 'El total tributario no coincide con el monto confirmado.');
+      }
       const corrigeTexto = referencias.some((r) => r.CodRef === 2);
       if (mntTotal <= 0 && !corrigeTexto) {
         throw new ApiError(422, 'El monto total del documento debe ser mayor a 0.');
@@ -239,20 +243,17 @@ export class ApiDocumentosService {
         detalles,
         referencias: referencias.length > 0 ? referencias : undefined,
         apiClientId: client.id,
+        idempotencyReservationId: reserva.id,
         referenciaExterna: req.referenciaExterna,
-      });
-
-      await this.prisma.apiIdempotencia.update({
-        where: { id: reserva.id },
-        data: { documentoId: documento.id },
       });
 
       // Al aceptar el documento se envía de inmediato al SII
       const actual = await this.enviarDeInmediato(documento.id);
       return { documento: actual ?? documento, idempotente: false, advertencias };
     } catch (err) {
-      // Liberar la clave para que el cliente pueda reintentar la misma solicitud
-      await this.prisma.apiIdempotencia.delete({ where: { id: reserva.id } }).catch(() => undefined);
+      // Liberar solo reservas sin documento. Si hubo commit y falló la respuesta,
+      // conservar la clave para que el reintento recupere el mismo DTE.
+      await this.prisma.apiIdempotencia.deleteMany({ where: { id: reserva.id, documentoId: null } }).catch(() => undefined);
       throw this.traducirError(err);
     }
   }

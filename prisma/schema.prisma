@@ -116,6 +116,7 @@ enum EnvioStatus {
 
 /// 1. EMPRESA EMISORA (TENANT / `res.company` en Odoo)
 model Tenant {
+  salesGoals SalesGoal[]
   id              String             @id @default(uuid()) @db.Uuid
   rut             String             @unique @db.VarChar(12) // Formato: 76123456-0
   razonSocial     String             @db.VarChar(100)
@@ -147,6 +148,48 @@ model Tenant {
   pagos           AccountPayment[]
   apiClients      ApiClient[]
   foliosSinUso    FolioSinUso[]
+  financeMembers FinanceMembership[]
+  financePeriods FinancePeriod[]
+  financeEntries FinanceEntry[]
+  financeAudit FinanceAuditEvent[]
+  financeConfiguration FinanceConfiguration?
+  financePostingJobs FinancePostingJob[]
+  receivables FinanceReceivable[]
+  receipts FinanceReceipt[]
+  receiptReversals FinanceReceiptReversal[]
+  creditAllocations FinanceCreditAllocation[]
+  creditAllocationReversals FinanceCreditAllocationReversal[]
+  vendors FinanceVendor[]
+  purchaseOrders FinancePurchaseOrder[]
+  payables FinancePayable[]
+  vendorPayments FinanceVendorPayment[]
+  vendorPaymentReversals FinanceVendorPaymentReversal[]
+  vendorCreditAllocations FinanceVendorCreditAllocation[]
+  vendorCreditAllocationReversals FinanceVendorCreditAllocationReversal[]
+  cashBoxes FinanceCashBox[]
+  cashShifts FinanceCashShift[]
+  directMovements FinanceDirectMovement[]
+  directMovementReversals FinanceDirectMovementReversal[]
+  internalTransfers FinanceInternalTransfer[]
+  paymentRequests FinancePaymentRequest[]
+  bankAccounts FinanceBankAccount[]
+  bankStatements FinanceBankStatement[]
+  bankStatementLines FinanceBankStatementLine[]
+  bankReconciliations FinanceBankReconciliation[]
+  bankReconciliationReversals FinanceBankReconciliationReversal[]
+  bankRules FinanceBankRule[]
+  costCenters FinanceCostCenter[]
+  customAccounts FinanceCustomAccount[]
+  fiscalYears FinanceFiscalYear[]
+  receivedDtes FinanceReceivedDte[]
+  taxDeclarations FinanceTaxF29Declaration[]
+  budgets FinanceBudget[]
+  budgetItems FinanceBudgetItem[]
+  fixedAssets FinanceFixedAsset[]
+  payrollEmployees FinancePayrollEmployee[]
+  payrollSlips FinancePayrollSlip[]
+  feeReceipts FinanceFeeReceipt[]
+  taxSettings FinanceTaxSetting?
 
   @@index([rut])
   @@map("tenants")
@@ -218,7 +261,9 @@ model ClienteReceptor {
   documentos   DocumentoDTE[]
   asientos     AccountMove[]
   pagos        AccountPayment[]
+  receivables FinanceReceivable[]
 
+  @@unique([tenantId, id])
   @@unique([tenantId, rut])
   @@index([tenantId])
   @@map("clientes_receptores")
@@ -455,10 +500,14 @@ model DocumentoDTE {
   caf             CafFolio        @relation(fields: [cafId], references: [id])
   envioLote       EnvioDteLote?   @relation(fields: [envioLoteId], references: [id])
   apiClient       ApiClient?      @relation(fields: [apiClientId], references: [id])
+  financeEntries FinanceEntry[]
+  receivables FinanceReceivable[]
+  financePostingJob FinancePostingJob?
   accountMove     AccountMove?
   idempotencias   ApiIdempotencia[]
   webhooks        WebhookEvento[]
 
+  @@unique([tenantId, id])
   @@unique([tenantId, tipoDte, folio])
   @@index([tenantId, estado])
   @@index([tenantId, trackId])
@@ -563,7 +612,1036 @@ model FolioSinUso {
 
   tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, id])
   @@unique([tenantId, tipoDte, folio])
   @@index([tenantId, anuladoAt])
   @@map("folios_sin_uso")
+}
+
+// Núcleo financiero persistente; separado de los datos de demostración.
+enum FinanceRole {
+  OWNER
+  ACCOUNTANT
+  BILLING
+  VIEWER
+}
+model FinanceUser {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique @db.VarChar(254)
+  name String @db.VarChar(100)
+  passwordHash String
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  memberships FinanceMembership[]
+  sessions FinanceSession[]
+}
+model FinanceMembership {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  userId String @db.Uuid
+  role FinanceRole
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user FinanceUser @relation(fields: [userId], references: [id])
+  @@unique([tenantId, userId])
+}
+model FinanceSession {
+  id String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique
+  userId String @db.Uuid
+  expiresAt DateTime
+  user FinanceUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+}
+model FinancePeriod {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  month String @db.VarChar(7)
+  closedAt DateTime?
+  closedBy String? @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  entries FinanceEntry[]
+  @@unique([tenantId, month])
+  @@unique([tenantId, id])
+}
+model FinanceEntry {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  periodId String @db.Uuid
+  date DateTime @db.Date
+  description String @db.VarChar(250)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+  sourceOperationId String? @unique @db.Uuid
+  sourceDocumentId String? @unique @db.Uuid
+  sourceDocument DocumentoDTE? @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  createdTransaction String @default(dbgenerated("(txid_current())::text"))
+  reversesId String? @unique @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  period FinancePeriod @relation(fields: [tenantId, periodId], references: [tenantId, id])
+  reverses FinanceEntry? @relation("FinanceReversal", fields: [reversesId], references: [id])
+  reversal FinanceEntry? @relation("FinanceReversal")
+  lines FinanceEntryLine[]
+  receivables FinanceReceivable[]
+  receipts FinanceReceipt[]
+  receiptReversals FinanceReceiptReversal[]
+  payables FinancePayable[]
+  vendorPayments FinanceVendorPayment[]
+  vendorPaymentReversals FinanceVendorPaymentReversal[]
+  directMovements FinanceDirectMovement[]
+  directMovementReversals FinanceDirectMovementReversal[]
+  internalTransfers FinanceInternalTransfer[]
+  @@unique([tenantId, id])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, date])
+}
+model FinanceEntryLine {
+  id String @id @default(uuid()) @db.Uuid
+  entryId String @db.Uuid
+  accountCode String @db.VarChar(16)
+  debit Decimal @db.Decimal(20, 0)
+  credit Decimal @db.Decimal(20, 0)
+  costCenterId String? @db.Uuid
+  entry FinanceEntry @relation(fields: [entryId], references: [id])
+  costCenter FinanceCostCenter? @relation(fields: [costCenterId], references: [id])
+  @@index([entryId])
+  @@index([costCenterId])
+}
+model FinanceAuditEvent {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  actorId String @db.Uuid
+  action String @db.VarChar(80)
+  entityId String @db.Uuid
+  data Json
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId, createdAt])
+}
+
+model FinanceConfiguration {
+  tenantId String @id @db.Uuid
+  automaticPosting Boolean @default(false)
+  authorizedBy String @db.Uuid
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+model FinancePostingJob {
+  documentId String @id @db.Uuid
+  tenantId String @db.Uuid
+  state String @default("PENDING") @db.VarChar(12)
+  attempts Int @default(0)
+  nextAttempt DateTime @default(now())
+  lastError String? @db.VarChar(500)
+  entryId String? @db.Uuid
+  updatedAt DateTime @updatedAt
+  document DocumentoDTE @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([state, nextAttempt])
+}
+
+// Cartera comercial: cada saldo nace de un DTE ya centralizado, sin duplicar clientes.
+model FinanceReceivable {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  documentId String @unique @db.Uuid
+  customerId String @db.Uuid
+  sourceEntryId String @unique @db.Uuid
+  date DateTime @db.Date
+  dueDate DateTime? @db.Date
+  amount Decimal @db.Decimal(20, 0)
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  document DocumentoDTE @relation(fields: [tenantId, documentId], references: [tenantId, id], onDelete: Restrict)
+  customer ClienteReceptor @relation(fields: [tenantId, customerId], references: [tenantId, id], onDelete: Restrict)
+  sourceEntry FinanceEntry @relation(fields: [tenantId, sourceEntryId], references: [tenantId, id], onDelete: Restrict)
+  receipts FinanceReceipt[]
+  invoiceAllocations FinanceCreditAllocation[] @relation("InvoiceAllocation")
+  creditAllocations FinanceCreditAllocation[] @relation("CreditAllocation")
+  @@unique([tenantId, id])
+  @@index([tenantId, customerId, dueDate])
+}
+model FinanceReceipt {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  receivableId String @db.Uuid
+  entryId String @unique @db.Uuid
+  amount Decimal @db.Decimal(20, 0)
+  date DateTime @db.Date
+  method String @db.VarChar(20)
+  reference String @db.VarChar(100)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  receivable FinanceReceivable @relation(fields: [tenantId, receivableId], references: [tenantId, id], onDelete: Restrict)
+  entry FinanceEntry @relation(fields: [tenantId, entryId], references: [tenantId, id], onDelete: Restrict)
+  reversals FinanceReceiptReversal[]
+  @@unique([tenantId, id])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, date])
+}
+model FinanceReceiptReversal {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  receiptId String @unique @db.Uuid
+  entryId String @unique @db.Uuid
+  date DateTime @db.Date
+  reason String @db.VarChar(200)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  receipt FinanceReceipt @relation(fields: [tenantId, receiptId], references: [tenantId, id], onDelete: Restrict)
+  entry FinanceEntry @relation(fields: [tenantId, entryId], references: [tenantId, id], onDelete: Restrict)
+  @@unique([tenantId, idempotencyKey])
+}
+model FinanceCreditAllocation {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  creditId String @db.Uuid
+  invoiceId String @db.Uuid
+  amount Decimal @db.Decimal(20, 0)
+  date DateTime @db.Date
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  credit FinanceReceivable @relation("CreditAllocation", fields: [tenantId, creditId], references: [tenantId, id], onDelete: Restrict)
+  invoice FinanceReceivable @relation("InvoiceAllocation", fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Restrict)
+  reversals FinanceCreditAllocationReversal[]
+  @@unique([tenantId, id])
+  @@unique([tenantId, idempotencyKey])
+}
+model FinanceCreditAllocationReversal {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  allocationId String @unique @db.Uuid
+  date DateTime @db.Date
+  reason String @db.VarChar(200)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  allocation FinanceCreditAllocation @relation(fields: [tenantId, allocationId], references: [tenantId, id], onDelete: Restrict)
+  @@unique([tenantId, idempotencyKey])
+}
+
+// ============================================================================
+// FASE 1: COMPRAS Y CUENTAS POR PAGAR (PAYABLES & PROCUREMENT)
+// ============================================================================
+
+model FinanceVendor {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  rut String @db.VarChar(15)
+  razonSocial String @db.VarChar(120)
+  giro String @db.VarChar(100)
+  direccion String @db.VarChar(100)
+  comuna String @db.VarChar(30)
+  ciudad String @db.VarChar(30)
+  contacto String? @db.VarChar(80)
+  correo String? @db.VarChar(120)
+  telefono String? @db.VarChar(30)
+  banco String? @db.VarChar(60)
+  tipoCuenta String? @db.VarChar(30)
+  numeroCuenta String? @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  purchaseOrders FinancePurchaseOrder[]
+  payables FinancePayable[]
+  payments FinanceVendorPayment[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, rut])
+  @@index([tenantId, razonSocial])
+}
+
+model FinancePurchaseOrder {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  vendorId String @db.Uuid
+  folio Int
+  date DateTime @db.Date
+  expectedDeliveryDate DateTime? @db.Date
+  status String @default("BORRADOR") @db.VarChar(20) // BORRADOR, APROBADA, RECEPCIONADA, FACTURADA, CANCELADA
+  netAmount Decimal @db.Decimal(20, 0)
+  taxAmount Decimal @db.Decimal(20, 0)
+  totalAmount Decimal @db.Decimal(20, 0)
+  notes String? @db.VarChar(500)
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  vendor FinanceVendor @relation(fields: [tenantId, vendorId], references: [tenantId, id], onDelete: Restrict)
+  items FinancePurchaseOrderItem[]
+  payables FinancePayable[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, folio])
+  @@index([tenantId, vendorId, date])
+}
+
+model FinancePurchaseOrderItem {
+  id String @id @default(uuid()) @db.Uuid
+  orderId String @db.Uuid
+  description String @db.VarChar(250)
+  quantity Decimal @db.Decimal(12, 4)
+  unitPrice Decimal @db.Decimal(20, 0)
+  totalPrice Decimal @db.Decimal(20, 0)
+
+  order FinancePurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model FinancePayable {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  vendorId String @db.Uuid
+  purchaseOrderId String? @db.Uuid
+  sourceEntryId String? @unique @db.Uuid
+  documentType Int // 33: Factura, 34: Factura Exenta, 46: Factura Compra, 61: Nota Crédito Proveedor
+  folio Int
+  date DateTime @db.Date
+  dueDate DateTime? @db.Date
+  netAmount Decimal @db.Decimal(20, 0)
+  taxAmount Decimal @db.Decimal(20, 0)
+  exemptAmount Decimal @db.Decimal(20, 0)
+  totalAmount Decimal @db.Decimal(20, 0)
+  kind String @default("DEBT") @db.VarChar(20) // DEBT (facturas), CREDIT (notas de crédito), EXPENSE (gastos/rendiciones)
+  status String @default("PENDIENTE") @db.VarChar(20) // PENDIENTE, PROGRAMADO, PAGADO, ANULADO
+  description String? @db.VarChar(250)
+  scheduledDate DateTime? @db.Date
+  approvedBy String? @db.Uuid
+  approvedAt DateTime?
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  vendor FinanceVendor @relation(fields: [tenantId, vendorId], references: [tenantId, id], onDelete: Restrict)
+  purchaseOrder FinancePurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  sourceEntry FinanceEntry? @relation(fields: [tenantId, sourceEntryId], references: [tenantId, id], onDelete: Restrict)
+  payments FinanceVendorPayment[]
+  invoiceAllocations FinanceVendorCreditAllocation[] @relation("VendorInvoiceAllocation")
+  creditAllocations FinanceVendorCreditAllocation[] @relation("VendorCreditAllocation")
+  receivedDtes FinanceReceivedDte[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, vendorId, documentType, folio])
+  @@index([tenantId, vendorId, dueDate])
+}
+
+model FinanceVendorPayment {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  payableId String? @db.Uuid
+  vendorId String @db.Uuid
+  entryId String @unique @db.Uuid
+  amount Decimal @db.Decimal(20, 0)
+  date DateTime @db.Date
+  method String @db.VarChar(20) // TRANSFERENCIA, CHEQUE, EFECTIVO, TARJETA, OTRO
+  accountCode String @default("110110") @db.VarChar(16) // 110110 Caja, 110210 Banco
+  reference String @db.VarChar(100)
+  isAdvance Boolean @default(false)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  payable FinancePayable? @relation(fields: [tenantId, payableId], references: [tenantId, id], onDelete: Restrict)
+  vendor FinanceVendor @relation(fields: [tenantId, vendorId], references: [tenantId, id], onDelete: Restrict)
+  entry FinanceEntry @relation(fields: [tenantId, entryId], references: [tenantId, id], onDelete: Restrict)
+  reversals FinanceVendorPaymentReversal[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, vendorId, date])
+}
+
+model FinanceVendorPaymentReversal {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  paymentId String @unique @db.Uuid
+  entryId String @unique @db.Uuid
+  date DateTime @db.Date
+  reason String @db.VarChar(200)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  payment FinanceVendorPayment @relation(fields: [tenantId, paymentId], references: [tenantId, id], onDelete: Restrict)
+  entry FinanceEntry @relation(fields: [tenantId, entryId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, idempotencyKey])
+}
+
+model FinanceVendorCreditAllocation {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  creditId String @db.Uuid
+  invoiceId String @db.Uuid
+  amount Decimal @db.Decimal(20, 0)
+  date DateTime @db.Date
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  credit FinancePayable @relation("VendorCreditAllocation", fields: [tenantId, creditId], references: [tenantId, id], onDelete: Restrict)
+  invoice FinancePayable @relation("VendorInvoiceAllocation", fields: [tenantId, invoiceId], references: [tenantId, id], onDelete: Restrict)
+  reversals FinanceVendorCreditAllocationReversal[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, idempotencyKey])
+}
+
+model FinanceVendorCreditAllocationReversal {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  allocationId String @unique @db.Uuid
+  date DateTime @db.Date
+  reason String @db.VarChar(200)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  allocation FinanceVendorCreditAllocation @relation(fields: [tenantId, allocationId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, idempotencyKey])
+}
+
+// ============================================================================
+// FASE 2: TESORERÍA (TREASURY, CASH MANAGEMENT & LIQUIDITY)
+// ============================================================================
+
+model FinanceCashBox {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  name String @db.VarChar(80)
+  type String @default("CENTRAL") @db.VarChar(20) // CENTRAL, PETTY_CASH, BRANCH
+  currency String @default("CLP") @db.VarChar(10)
+  accountCode String @default("110110") @db.VarChar(16) // 110110 Caja Central, 110120 Caja Chica
+  responsibleUserId String? @db.Uuid
+  maxBalance Decimal? @db.Decimal(20, 0)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  shifts FinanceCashShift[]
+  directMovements FinanceDirectMovement[]
+  transfersFrom FinanceInternalTransfer[] @relation("TransferFromCashBox")
+  transfersTo FinanceInternalTransfer[] @relation("TransferToCashBox")
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+}
+
+model FinanceCashShift {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  cashBoxId String @db.Uuid
+  openedBy String @db.Uuid
+  openedAt DateTime @default(now())
+  openingBalance Decimal @db.Decimal(20, 0)
+  closedBy String? @db.Uuid
+  closedAt DateTime?
+  expectedBalance Decimal? @db.Decimal(20, 0)
+  countedBalance Decimal? @db.Decimal(20, 0)
+  difference Decimal? @db.Decimal(20, 0)
+  differenceReason String? @db.VarChar(250)
+  differenceEntryId String? @unique @db.Uuid
+  status String @default("OPEN") @db.VarChar(12) // OPEN, CLOSED
+  notes String? @db.VarChar(500)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  cashBox FinanceCashBox @relation(fields: [tenantId, cashBoxId], references: [tenantId, id], onDelete: Restrict)
+  directMovements FinanceDirectMovement[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, cashBoxId, status])
+}
+
+model FinanceDirectMovement {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  cashBoxId String? @db.Uuid
+  shiftId String? @db.Uuid
+  entryId String @unique @db.Uuid
+  type String @db.VarChar(10) // INCOME, EXPENSE
+  date DateTime @db.Date
+  amount Decimal @db.Decimal(20, 0)
+  accountCode String @db.VarChar(16) // Cuenta de contrapartida (Gasto, Ingreso, Aporte, etc.)
+  category String @default("OTRO") @db.VarChar(30) // GASTO_MENOR, RETIRO, APORTE, OTRO
+  description String @db.VarChar(250)
+  recipientOrPayer String? @db.VarChar(100)
+  voucherNumber String? @db.VarChar(50)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  cashBox FinanceCashBox? @relation(fields: [tenantId, cashBoxId], references: [tenantId, id], onDelete: Restrict)
+  shift FinanceCashShift? @relation(fields: [tenantId, shiftId], references: [tenantId, id], onDelete: SetNull)
+  entry FinanceEntry @relation(fields: [tenantId, entryId], references: [tenantId, id], onDelete: Restrict)
+  reversals FinanceDirectMovementReversal[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, date, type])
+}
+
+model FinanceDirectMovementReversal {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  movementId String @unique @db.Uuid
+  entryId String @unique @db.Uuid
+  date DateTime @db.Date
+  reason String @db.VarChar(200)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  movement FinanceDirectMovement @relation(fields: [tenantId, movementId], references: [tenantId, id], onDelete: Restrict)
+  entry FinanceEntry @relation(fields: [tenantId, entryId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, idempotencyKey])
+}
+
+model FinanceInternalTransfer {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  fromAccountCode String @db.VarChar(16) // 110110 Caja, 110210 Banco
+  fromCashBoxId String? @db.Uuid
+  toAccountCode String @db.VarChar(16) // 110110 Caja, 110210 Banco
+  toCashBoxId String? @db.Uuid
+  entryId String @unique @db.Uuid
+  amount Decimal @db.Decimal(20, 0)
+  date DateTime @db.Date
+  reference String @db.VarChar(100)
+  notes String? @db.VarChar(250)
+  idempotencyKey String @db.VarChar(200)
+  requestHash String
+  createdBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  fromCashBox FinanceCashBox? @relation("TransferFromCashBox", fields: [tenantId, fromCashBoxId], references: [tenantId, id], onDelete: Restrict)
+  toCashBox FinanceCashBox? @relation("TransferToCashBox", fields: [tenantId, toCashBoxId], references: [tenantId, id], onDelete: Restrict)
+  entry FinanceEntry @relation(fields: [tenantId, entryId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, date])
+}
+
+model FinancePaymentRequest {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  amount Decimal @db.Decimal(20, 0)
+  date DateTime @db.Date
+  dueDate DateTime? @db.Date
+  recipient String @db.VarChar(120)
+  reason String @db.VarChar(250)
+  category String @default("GASTO") @db.VarChar(30)
+  urgency String @default("NORMAL") @db.VarChar(10) // NORMAL, URGENT
+  status String @default("PENDING") @db.VarChar(15) // PENDING, APPROVED, REJECTED, PAID
+  approvedBy String? @db.Uuid
+  approvedAt DateTime?
+  rejectionReason String? @db.VarChar(250)
+  paidPaymentId String? @db.Uuid
+  requestedBy String @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@index([tenantId, status, dueDate])
+}
+
+// Módulo 07 · Bancos y conciliación bancaria
+model FinanceBankAccount {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  bankCode String @db.VarChar(20)
+  bankName String @db.VarChar(80)
+  accountType String @default("CORRIENTE") @db.VarChar(20)
+  accountNumber String @db.VarChar(40)
+  currency String @default("CLP") @db.VarChar(10)
+  accountCode String @default("110210") @db.VarChar(16)
+  initialBalance Decimal @default(0) @db.Decimal(20, 0)
+  initialDate DateTime? @db.Date
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  statements FinanceBankStatement[]
+  statementLines FinanceBankStatementLine[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, accountNumber])
+  @@index([tenantId, bankCode])
+}
+
+model FinanceBankStatement {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  bankAccountId String @db.Uuid
+  filename String @db.VarChar(255)
+  fileHash String @db.VarChar(64)
+  format String @default("GENERIC_CSV") @db.VarChar(30)
+  importedAt DateTime @default(now())
+  importedBy String @db.Uuid
+  startDate DateTime @db.Date
+  endDate DateTime @db.Date
+  openingBalance Decimal? @db.Decimal(20, 0)
+  closingBalance Decimal? @db.Decimal(20, 0)
+  totalCredits Decimal @default(0) @db.Decimal(20, 0)
+  totalDebits Decimal @default(0) @db.Decimal(20, 0)
+  lineCount Int @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  bankAccount FinanceBankAccount @relation(fields: [tenantId, bankAccountId], references: [tenantId, id], onDelete: Restrict)
+  lines FinanceBankStatementLine[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, fileHash])
+  @@index([tenantId, bankAccountId, importedAt])
+}
+
+model FinanceBankStatementLine {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  statementId String @db.Uuid
+  bankAccountId String @db.Uuid
+  transactionDate DateTime @db.Date
+  valueDate DateTime? @db.Date
+  description String @db.VarChar(255)
+  referenceNumber String? @db.VarChar(100)
+  amount Decimal @db.Decimal(20, 0)
+  balanceAfter Decimal? @db.Decimal(20, 0)
+  lineHash String @db.VarChar(64)
+  status String @default("PENDING") @db.VarChar(20)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  statement FinanceBankStatement @relation(fields: [tenantId, statementId], references: [tenantId, id], onDelete: Restrict)
+  bankAccount FinanceBankAccount @relation(fields: [tenantId, bankAccountId], references: [tenantId, id], onDelete: Restrict)
+  reconciliation FinanceBankReconciliation?
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, lineHash])
+  @@index([tenantId, bankAccountId, transactionDate, status])
+}
+
+model FinanceBankReconciliation {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  statementLineId String @unique @db.Uuid
+  matchType String @db.VarChar(30)
+  targetEntryId String? @db.Uuid
+  matchedReceiptId String? @db.Uuid
+  matchedPaymentId String? @db.Uuid
+  matchedTransferId String? @db.Uuid
+  matchedMovementId String? @db.Uuid
+  adjustmentEntryId String? @db.Uuid
+  notes String? @db.VarChar(250)
+  reconciledAt DateTime @default(now())
+  reconciledBy String @db.Uuid
+  isActive Boolean @default(true)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  statementLine FinanceBankStatementLine @relation(fields: [tenantId, statementLineId], references: [tenantId, id], onDelete: Restrict)
+  reversals FinanceBankReconciliationReversal[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, statementLineId])
+  @@index([tenantId, reconciledAt])
+}
+
+model FinanceBankReconciliationReversal {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  reconciliationId String @db.Uuid
+  reason String @db.VarChar(200)
+  reversedAt DateTime @default(now())
+  reversedBy String @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  reconciliation FinanceBankReconciliation @relation(fields: [tenantId, reconciliationId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, id])
+}
+
+model FinanceBankRule {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  name String @db.VarChar(100)
+  pattern String @db.VarChar(150)
+  action String @db.VarChar(30)
+  targetAccountCode String @db.VarChar(16)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@index([tenantId, isActive])
+}
+
+// Módulo 08 · Contabilidad general y dimensiones analíticas
+model FinanceCostCenter {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  code String @db.VarChar(20)
+  name String @db.VarChar(100)
+  description String? @db.VarChar(200)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  lines FinanceEntryLine[]
+  budgetItems FinanceBudgetItem[]
+  fixedAssets FinanceFixedAsset[]
+  payrollEmployees FinancePayrollEmployee[]
+  feeReceipts FinanceFeeReceipt[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
+}
+
+model FinanceCustomAccount {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  code String @db.VarChar(16)
+  name String @db.VarChar(100)
+  accountType String @db.VarChar(30)
+  internalGroup String @db.VarChar(20)
+  siiClassification String @db.VarChar(30)
+  includeInitialBalance Boolean @default(true)
+  reconcile Boolean @default(false)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@index([tenantId, isActive])
+}
+
+model FinanceFiscalYear {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  year Int
+  openingEntryId String? @db.Uuid
+  closingEntryId String? @db.Uuid
+  status String @default("OPEN") @db.VarChar(15) // OPEN, CLOSED
+  resultAmount Decimal? @db.Decimal(20, 0)
+  resultType String? @db.VarChar(15) // PROFIT, LOSS, BALANCED
+  closedAt DateTime?
+  closedBy String? @db.Uuid
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, year])
+  @@index([tenantId, status])
+}
+
+// ============================================================================
+// FASE 5: DOCUMENTOS RECIBIDOS Y GESTIÓN TRIBUTARIA
+// ============================================================================
+
+model FinanceReceivedDte {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  senderRut String @db.VarChar(12)
+  senderName String @db.VarChar(150)
+  documentType Int
+  folio BigInt
+  date DateTime @db.Date
+  netAmount Decimal @db.Decimal(20, 0)
+  taxAmount Decimal @db.Decimal(20, 0)
+  exemptAmount Decimal @default(0) @db.Decimal(20, 0)
+  totalAmount Decimal @db.Decimal(20, 0)
+  status String @default("RECEIVED") @db.VarChar(20) // RECEIVED, ACCEPTED, CLAIMED
+  claimReason String? @db.VarChar(255)
+  xmlPayload String? @db.Text
+  payableId String? @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  payable FinancePayable? @relation(fields: [payableId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, senderRut, documentType, folio])
+  @@index([tenantId, status])
+  @@index([tenantId, date])
+}
+
+model FinanceTaxF29Declaration {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  period String @db.VarChar(7) // YYYY-MM
+  salesNet Decimal @default(0) @db.Decimal(20, 0)
+  salesExempt Decimal @default(0) @db.Decimal(20, 0)
+  salesVatDebit Decimal @default(0) @db.Decimal(20, 0)
+  purchasesNet Decimal @default(0) @db.Decimal(20, 0)
+  purchasesExempt Decimal @default(0) @db.Decimal(20, 0)
+  purchasesVatCredit Decimal @default(0) @db.Decimal(20, 0)
+  feeRetention Decimal @default(0) @db.Decimal(20, 0)
+  payrollRetention Decimal @default(0) @db.Decimal(20, 0)
+  ppmRate Decimal @default(1.00) @db.Decimal(5, 2)
+  ppmAmount Decimal @default(0) @db.Decimal(20, 0)
+  netTaxPayable Decimal @default(0) @db.Decimal(20, 0)
+  taxCreditRemainder Decimal @default(0) @db.Decimal(20, 0)
+  status String @default("DRAFT") @db.VarChar(15) // DRAFT, DECLARED, PAID
+  declaredAt DateTime?
+  declaredBy String? @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, period])
+  @@index([tenantId, status])
+}
+
+// ============================================================================
+// FASE 6: PRESUPUESTOS, ACTIVOS FIJOS, REMUNERACIONES Y HONORARIOS
+// ============================================================================
+
+model FinanceBudget {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  year Int
+  name String @db.VarChar(100)
+  status String @default("DRAFT") @db.VarChar(15) // DRAFT, APPROVED, CLOSED
+  department String? @db.VarChar(100)
+  notes String? @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  items FinanceBudgetItem[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, year, name])
+  @@index([tenantId, status])
+}
+
+model FinanceBudgetItem {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  budgetId String @db.Uuid
+  costCenterId String? @db.Uuid
+  accountCode String @db.VarChar(16)
+  month Int // 1..12
+  allocatedAmount Decimal @default(0) @db.Decimal(20, 0)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  budget FinanceBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  costCenter FinanceCostCenter? @relation(fields: [costCenterId], references: [id])
+
+  @@unique([budgetId, accountCode, month])
+  @@index([tenantId, budgetId])
+}
+
+model FinanceFixedAsset {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  code String @db.VarChar(30)
+  name String @db.VarChar(150)
+  category String @db.VarChar(40) // EQUIPMENT, FURNITURE, VEHICLE, BUILDING, SOFTWARE
+  purchaseDate DateTime @db.Date
+  purchaseCost Decimal @db.Decimal(20, 0)
+  residualValue Decimal @default(0) @db.Decimal(20, 0)
+  usefulLifeMonths Int
+  depreciatedMonths Int @default(0)
+  accumulatedDepreciation Decimal @default(0) @db.Decimal(20, 0)
+  bookValue Decimal @db.Decimal(20, 0)
+  status String @default("ACTIVE") @db.VarChar(20) // ACTIVE, DISPOSED, FULLY_DEPRECIATED
+  payableId String? @db.Uuid
+  costCenterId String? @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  costCenter FinanceCostCenter? @relation(fields: [costCenterId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+}
+
+model FinancePayrollEmployee {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  rut String @db.VarChar(12)
+  name String @db.VarChar(150)
+  position String @db.VarChar(100)
+  department String? @db.VarChar(100)
+  afp String @db.VarChar(50)
+  healthSystem String @db.VarChar(50)
+  baseSalary Decimal @db.Decimal(20, 0)
+  isActive Boolean @default(true)
+  costCenterId String? @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  costCenter FinanceCostCenter? @relation(fields: [costCenterId], references: [id])
+  slips FinancePayrollSlip[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, rut])
+  @@index([tenantId, isActive])
+}
+
+model FinancePayrollSlip {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  employeeId String @db.Uuid
+  period String @db.VarChar(7) // YYYY-MM
+  baseSalary Decimal @db.Decimal(20, 0)
+  overtime Decimal @default(0) @db.Decimal(20, 0)
+  bonus Decimal @default(0) @db.Decimal(20, 0)
+  gratification Decimal @default(0) @db.Decimal(20, 0)
+  totalImponible Decimal @db.Decimal(20, 0)
+  nonTaxableAllowances Decimal @default(0) @db.Decimal(20, 0)
+  afpDeduction Decimal @db.Decimal(20, 0)
+  healthDeduction Decimal @db.Decimal(20, 0)
+  afcDeduction Decimal @default(0) @db.Decimal(20, 0)
+  incomeTax Decimal @default(0) @db.Decimal(20, 0)
+  totalDeductions Decimal @db.Decimal(20, 0)
+  netSalary Decimal @db.Decimal(20, 0)
+  status String @default("DRAFT") @db.VarChar(15) // DRAFT, APPROVED, PAID
+  sourceEntryId String? @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  employee FinancePayrollEmployee @relation(fields: [employeeId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, employeeId, period])
+  @@index([tenantId, period])
+}
+
+model FinanceFeeReceipt {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  rut String @db.VarChar(12)
+  name String @db.VarChar(150)
+  folio BigInt
+  date DateTime @db.Date
+  description String @db.VarChar(255)
+  grossAmount Decimal @db.Decimal(20, 0)
+  retentionRate Decimal @default(13.75) @db.Decimal(5, 2)
+  retentionAmount Decimal @db.Decimal(20, 0)
+  netAmount Decimal @db.Decimal(20, 0)
+  status String @default("PENDING") @db.VarChar(15) // PENDING, PAID
+  sourceEntryId String? @db.Uuid
+  costCenterId String? @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  costCenter FinanceCostCenter? @relation(fields: [costCenterId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, rut, folio])
+  @@index([tenantId, status])
+}
+
+// ============================================================================
+// FASE 7: AUDITORÍA EXTENDIDA, CONFIGURACIÓN TRIBUTARIA Y MULTIMONEDA
+// ============================================================================
+
+model FinanceCurrencyRate {
+  id String @id @default(uuid()) @db.Uuid
+  date DateTime @db.Date
+  currency String @db.VarChar(10) // USD, UF, EUR
+  rate Decimal @db.Decimal(12, 4)
+  source String @default("BANCO_CENTRAL_CL") @db.VarChar(50)
+  createdAt DateTime @default(now())
+
+  @@unique([date, currency])
+  @@index([currency, date])
+}
+
+model FinanceTaxSetting {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  environment String @default("CERTIFICACION") @db.VarChar(15) // DEVELOPMENT, CERTIFICACION, PRODUCCION
+  ppmRate Decimal @default(1.00) @db.Decimal(5, 2)
+  feeRetentionRate Decimal @default(13.75) @db.Decimal(5, 2)
+  autoAcuseDte Boolean @default(false)
+  siiCertificateExpiresAt DateTime?
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId])
+}
+
+model SalesGoal {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  period     String   @db.VarChar(10)
+  startDate  DateTime @db.Date
+  endDate    DateTime @db.Date
+  target     Decimal  @db.Decimal(20, 0)
+  currency   String   @default("CLP") @db.VarChar(3)
+  responsible String  @db.VarChar(100)
+  notes       String  @default("") @db.VarChar(1000)
+  createdBy   String  @db.Uuid
+  updatedBy   String  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, period, startDate])
+}
+
+model IpcMonthlyIndex {
+  id          String   @id @default(uuid()) @db.Uuid
+  month       String   @db.VarChar(7)
+  base        Int
+  value       Decimal  @db.Decimal(20, 12)
+  source      String   @db.Text
+  publishedAt DateTime @db.Date
+  retrievedAt DateTime @default(now())
+  importedBy  String   @db.Uuid
+
+  @@unique([base, month, value])
+  @@index([base, month, retrievedAt])
 }

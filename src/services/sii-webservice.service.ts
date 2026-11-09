@@ -42,7 +42,19 @@ export class SiiWebServiceIntegration {
    * Permite inyectar un cliente HTTP personalizado (fetch) para pruebas unitarias / mocks
    * o utilizar el `fetch` nativo de Node.js 20+ en producción.
    */
-  constructor(private readonly httpClient: typeof fetch = globalThis.fetch) {}
+  private readonly httpClient: typeof fetch;
+
+  constructor(httpClient: typeof fetch = globalThis.fetch) {
+    this.httpClient = async (input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+      const productivos = new Set(['palena.sii.cl', 'api.sii.cl', 'rahue.sii.cl']);
+      if (productivos.has(url.hostname) && process.env.FELINE_SII_PRODUCCION_AUTORIZADA !== 'SI_AUTORIZO_PRODUCCION') {
+        throw new Error('SII producción bloqueado: se requiere autorización expresa y configuración del operador.');
+      }
+      // No seguir redirecciones a un ambiente distinto del solicitado.
+      return httpClient(input, { ...init, redirect: 'error' });
+    };
+  }
 
   /**
    * 1. Solicita una Semilla (`getSeed`) al Web Service SOAP `CrSeed.jws` del SII.
